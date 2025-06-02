@@ -10,10 +10,10 @@
   },
   "files": [
     "src/main.ts",
-    "src/main.server.ts",
-    "src/server.ts"
+    "src/app/protos/proto.config.ts"
   ],
-  "include": [
+ "include": [
+    "src/**/*.ts",
     "src/**/*.d.ts"
   ]
 }

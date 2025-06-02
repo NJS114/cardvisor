@@ -1,0 +1,89 @@
+syntax = "proto3";
+
+option csharp_namespace = "CarProject.API.Protos.Expert";
+
+package expert;
+
+service ExpertService {
+  rpc CreateExpert (CreateExpertRequest) returns (ExpertReply);
+  rpc GetExpertById (GetExpertByIdRequest) returns (ExpertReply);
+  rpc GetAllExperts (Empty) returns (ExpertsReply);
+  rpc GetExpertsByAvailability (GetExpertsByAvailabilityRequest) returns (ExpertsReply);
+  rpc GetExpertsBySpeciality (GetExpertsBySpecialityRequest) returns (ExpertsReply);
+  rpc DeleteExpert (DeleteExpertRequest) returns (DeleteReply);
+  rpc GetExpertsByYearsOfExperience (GetExpertsByYearsOfExperienceRequest) returns (ExpertsReply);
+  rpc GetExpertsByRating (GetExpertsByRatingRequest) returns (ExpertsReply);
+}
+
+service CertificationService {
+  rpc UploadCertification(stream UploadCertificationRequest) returns (UploadCertificationReply);
+}
+message GetExpertsByYearsOfExperienceRequest {
+  int32 years_of_experience = 1;
+}
+
+message GetExpertsByRatingRequest {
+  string rating = 1;
+}
+message UploadCertificationRequest {
+  string expert_id = 1;
+  string file_name = 2;
+  bytes chunk_data = 3;
+}
+
+message UploadCertificationReply {
+  string message = 1;
+  string file_url = 2;
+}
+
+message Empty {}
+
+message CreateExpertRequest {
+  string user_email = 1;
+  string user_password = 2;
+  string first_name = 3;
+  string last_name = 4;
+  string specialities = 5;
+  string certification_docs = 6;
+  bool is_available = 7;
+  float rating = 8;  // Nullable rating
+  int32 years_of_experience = 9;
+}
+
+message GetExpertByIdRequest {
+  string id = 1;
+}
+
+message GetExpertsByAvailabilityRequest {
+  bool is_available = 1;
+}
+
+message GetExpertsBySpecialityRequest {
+  string speciality = 1;
+}
+
+message DeleteExpertRequest {
+  string id = 1;
+}
+
+message ExpertReply {
+  string id = 1;
+  string specialities = 2;
+  string certification_docs = 3;
+  bool is_available = 4;
+  float rating = 5;  // Nullable rating
+  string user_id = 6;	
+  string first_name = 7;
+  string last_name = 8;
+  string email = 9;
+  int32 years_of_experience = 10;
+  string review_count = 11;  // Nullable review_count
+}
+
+message ExpertsReply {
+  repeated ExpertReply experts = 1;
+}
+
+message DeleteReply {
+  string message = 1;
+}

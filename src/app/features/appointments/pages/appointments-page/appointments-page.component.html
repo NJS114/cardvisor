@@ -1,0 +1,30 @@
+<div class="container mt-4">
+  <h2>Mes rendez-vous</h2>
+
+  <div *ngIf="isLoading" class="text-center">
+    <div class="spinner-border" role="status">
+      <span class="visually-hidden">Chargement...</span>
+    </div>
+  </div>
+
+  <div *ngIf="errorMessage" class="alert alert-danger">
+    {{ errorMessage }}
+  </div>
+
+  <div *ngIf="!isLoading && !errorMessage">
+    <div class="row">
+      <div class="col-md-4 mb-4" *ngFor="let appointment of appointments">
+        <div class="card">
+          <div class="card-body">
+            <h5 class="card-title">Rendez-vous du {{ appointment.getDate() | date:'dd/MM/yyyy HH:mm' }}</h5>
+            <p class="card-text">
+              <strong>Statut:</strong> {{ appointment.getStatus() }}<br>
+              <strong>Adresse:</strong> {{ appointment.getAddress() }}<br>
+              <strong *ngIf="appointment.getNotes()">Notes:</strong> {{ appointment.getNotes() }}
+            </p>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div> 

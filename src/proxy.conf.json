@@ -1,0 +1,17 @@
+{
+  "/user": {
+    "target": "http://localhost:5257",
+    "secure": false,
+    "changeOrigin": true
+  },
+  "/vehicle": {
+    "target": "http://localhost:5257",
+    "secure": false,
+    "changeOrigin": true
+  },
+  "/appointment": {
+    "target": "http://localhost:5257",
+    "secure": false,
+    "changeOrigin": true
+  }
+}

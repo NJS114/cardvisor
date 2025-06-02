@@ -1,0 +1,88 @@
+﻿syntax = "proto3";
+
+option csharp_namespace = "CarProject.API.Protos";
+package report;
+
+service ReportService {
+  rpc CreateReport (CreateReportRequest) returns (ReportReply);
+  rpc GetReportByAppointmentId (GetReportByAppointmentRequest) returns (ReportReply);
+  rpc GetReportDocumentUrl (GetReportDocumentUrlRequest) returns (GetReportDocumentUrlReply); // ✅
+  rpc UpdateReport (UpdateReportRequest) returns (ReportReply); // ✅
+  rpc GetReportsByUser (GetReportsByUserRequest) returns (ReportsReply);
+  rpc UploadReportAttachment(stream UploadReportFileRequest) returns (UploadReportFileReply);
+  rpc VerifyAttachment (VerifyAttachmentRequest) returns (VerifyAttachmentReply);
+  rpc DeleteAttachment (DeleteAttachmentRequest) returns (DeleteAttachmentReply); // ✅
+
+}
+message UploadReportFileRequest {
+  string report_id = 1;
+  string file_name = 2;
+  bytes chunk_data = 3;
+}
+message VerifyAttachmentRequest {
+  string attachment_id = 1;
+}
+
+message VerifyAttachmentReply {
+  string message = 1;
+}
+message DeleteAttachmentRequest {
+  string attachment_id = 1;
+}
+
+message DeleteAttachmentReply {
+  string message = 1;
+}
+
+message UploadReportFileReply {
+  string message = 1;
+  string file_url = 2;
+}
+
+message CreateReportRequest {
+  string appointment_id = 1;
+  string summary = 2;
+  string recommendations = 3;
+  float estimated_value = 4;
+  string price_negotiation_advice = 5;
+  string document_url = 6;
+}
+message ReportsReply {
+  repeated ReportReply reports = 1;
+}
+
+
+message GetReportByAppointmentRequest {
+  string appointment_id = 1;
+}
+message GetReportsByUserRequest {
+  string user_id = 1;
+}
+
+message ReportReply {
+  string id = 1;
+  string appointment_id = 2;
+  string summary = 3;
+  string recommendations = 4;
+  float estimated_value = 5;
+  string price_negotiation_advice = 6;
+  string document_url = 7;
+  string created_at = 8;
+}
+
+message GetReportDocumentUrlRequest {
+  string report_id = 1;
+}
+
+message GetReportDocumentUrlReply {
+  string document_url = 1;
+}
+
+message UpdateReportRequest {
+  string id = 1;
+  string summary = 2;
+  string recommendations = 3;
+  float estimated_value = 4;
+  string price_negotiation_advice = 5;
+  string document_url = 6;
+}

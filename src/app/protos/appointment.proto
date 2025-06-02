@@ -1,0 +1,60 @@
+syntax = "proto3";
+
+option csharp_namespace = "CarProject.API.Protos.Appointment";
+
+package appointment;
+
+service AppointmentService {
+  rpc CreateAppointment (CreateAppointmentRequest) returns (AppointmentReply);
+  rpc GetAppointmentById (GetAppointmentByIdRequest) returns (AppointmentReply);
+  rpc GetAllAppointments (Empty) returns (AppointmentsReply);
+  rpc GetAppointmentsByUserId (GetAppointmentsByUserIdRequest) returns (AppointmentsReply);
+  rpc GetAppointmentsByExpertId (GetAppointmentsByExpertIdRequest) returns (AppointmentsReply);
+  rpc DeleteAppointment (DeleteAppointmentRequest) returns (DeleteReply);
+}
+
+message Empty {}
+message CreateAppointmentRequest {
+  string user_id = 1;
+  string expert_id = 2;
+  string vehicle_id = 3;
+  string date = 4;      
+  string status = 5;
+  string address = 6;
+  string notes = 7;
+}
+
+message GetAppointmentByIdRequest {
+  string appointment_id = 1;
+}
+
+message GetAppointmentsByUserIdRequest {
+  string user_id = 1;
+}
+
+message GetAppointmentsByExpertIdRequest {
+  string expert_id = 1;
+}
+
+message DeleteAppointmentRequest {
+  string appointment_id = 1;
+}
+
+message AppointmentReply {
+  string id = 1;
+  string user_id = 2;
+  string expert_id = 3;
+  string vehicle_id = 4;
+  string date = 5;
+  string status = 6;
+  string address = 7;
+  string notes = 8; 
+}
+
+message AppointmentsReply {
+  repeated AppointmentReply appointments = 1;
+}
+
+message DeleteReply {
+  string message = 1;
+}
