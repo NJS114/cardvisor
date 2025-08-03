@@ -1,6 +1,7 @@
 import { Component, OnInit } from '@angular/core';
 import { ActivatedRoute, Router } from '@angular/router';
 import { ExpertService } from '../../../../core/services/expert.service';
+import { AppointmentService, Appointment, AppointmentStatus } from '../../../../core/services/appointment.service';
 import { ExpertReply } from '../../../../protos/generated/expert_pb';
 
 @Component({
@@ -64,6 +65,43 @@ import { ExpertReply } from '../../../../protos/generated/expert_pb';
               </p>
             </div>
 
+            <!-- Rendez-vous -->
+            <div>
+              <h3 class="text-lg font-medium text-gray-900 mb-4">Rendez-vous</h3>
+              <div *ngIf="loading" class="flex justify-center items-center py-4">
+                <div class="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
+              </div>
+              
+              <div *ngIf="!loading && appointments.length === 0" class="text-center py-4">
+                <p class="text-gray-500">Aucun rendez-vous prévu</p>
+              </div>
+
+              <div *ngIf="!loading && appointments.length > 0" class="space-y-4">
+                <div *ngFor="let appointment of appointments" 
+                     class="bg-gray-50 rounded-lg p-4">
+                  <div class="flex justify-between items-start">
+                    <div>
+                      <p class="font-medium">
+                        <i class="fas fa-calendar mr-2"></i>
+                        {{ appointment.date | date:'long' }}
+                      </p>
+                      <p class="text-gray-600 mt-1">
+                        <i class="fas fa-clock mr-2"></i>
+                        {{ appointment.durationMinutes }} minutes
+                      </p>
+                      <p class="text-gray-600 mt-1">
+                        <i class="fas fa-map-marker-alt mr-2"></i>
+                        {{ appointment.address }}
+                      </p>
+                    </div>
+                    <span [class]="getStatusClass(appointment.status)">
+                      {{ getStatusLabel(appointment.status) }}
+                    </span>
+                  </div>
+                </div>
+              </div>
+            </div>
+
             <!-- Actions -->
             <div class="flex justify-end space-x-4 pt-6 border-t">
               <button (click)="bookAppointment()"
@@ -80,17 +118,21 @@ import { ExpertReply } from '../../../../protos/generated/expert_pb';
 })
 export class ExpertDetailComponent implements OnInit {
   expert?: ExpertReply;
+  appointments: Appointment[] = [];
+  loading = false;
 
   constructor(
     private route: ActivatedRoute,
     private router: Router,
-    private expertService: ExpertService
+    private expertService: ExpertService,
+    private appointmentService: AppointmentService
   ) {}
 
   ngOnInit(): void {
     const id = this.route.snapshot.paramMap.get('id');
     if (id) {
       this.loadExpert(id);
+      this.loadAppointments(id);
     }
   }
 
@@ -105,15 +147,60 @@ export class ExpertDetailComponent implements OnInit {
     });
   }
 
+  loadAppointments(expertId: string): void {
+    this.loading = true;
+    this.appointmentService.getAppointmentsByExpertId(expertId).subscribe({
+      next: (appointments: Appointment[]) => {
+        this.appointments = appointments;
+        this.loading = false;
+      },
+      error: (error: Error) => {
+        console.error('Erreur lors du chargement des rendez-vous:', error);
+        this.loading = false;
+      }
+    });
+  }
+
   goBack(): void {
     this.router.navigate(['/experts']);
   }
 
   bookAppointment(): void {
     if (this.expert) {
-      this.router.navigate(['/appointments/new'], {
+      this.router.navigate(['/appointments/create'], {
         queryParams: { expertId: this.expert.getId() }
       });
+    }
+  }
+
+  getStatusClass(status: AppointmentStatus): string {
+    const baseClasses = 'px-3 py-1 rounded-full text-sm font-medium';
+    switch (status) {
+      case AppointmentStatus.EN_ATTENTE:
+        return `${baseClasses} bg-yellow-100 text-yellow-800`;
+      case AppointmentStatus.CONFIRMÉ:
+        return `${baseClasses} bg-green-100 text-green-800`;
+      case AppointmentStatus.ANNULÉ:
+        return `${baseClasses} bg-red-100 text-red-800`;
+      case AppointmentStatus.RÉALISÉ:
+        return `${baseClasses} bg-blue-100 text-blue-800`;
+      default:
+        return `${baseClasses} bg-gray-100 text-gray-800`;
+    }
+  }
+
+  getStatusLabel(status: AppointmentStatus): string {
+    switch (status) {
+      case AppointmentStatus.EN_ATTENTE:
+        return 'En attente';
+      case AppointmentStatus.CONFIRMÉ:
+        return 'Confirmé';
+      case AppointmentStatus.RÉALISÉ:
+        return 'Terminé';
+      case AppointmentStatus.ANNULÉ:
+        return 'Annulé';
+      default:
+        return 'Inconnu';
     }
   }
 } 

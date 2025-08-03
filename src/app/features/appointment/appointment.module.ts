@@ -1,27 +1,24 @@
 import { NgModule } from '@angular/core';
 import { CommonModule } from '@angular/common';
-import { FormsModule, ReactiveFormsModule } from '@angular/forms';
-import { RouterModule, Routes } from '@angular/router';
-import { SharedModule } from '../../shared/shared.module';
+import { ReactiveFormsModule } from '@angular/forms';
+import { RouterModule } from '@angular/router';
 import { AppointmentFormComponent } from './components/appointment-form/appointment-form.component';
-
-const routes: Routes = [
-  {
-    path: '',
-    component: AppointmentFormComponent
-  }
-];
+import { AppointmentListComponent } from './components/appointment-list/appointment-list.component';
+import { AppointmentDetailComponent } from './components/appointment-detail/appointment-detail.component';
 
 @NgModule({
-  declarations: [],
   imports: [
     CommonModule,
-    FormsModule,
     ReactiveFormsModule,
-    RouterModule.forChild(routes),
-    SharedModule,
-    AppointmentFormComponent
+    RouterModule,
+    AppointmentFormComponent,
+    AppointmentListComponent,
+    AppointmentDetailComponent
   ],
-  exports: []
+  exports: [
+    AppointmentFormComponent,
+    AppointmentListComponent,
+    AppointmentDetailComponent
+  ]
 })
 export class AppointmentModule { } 

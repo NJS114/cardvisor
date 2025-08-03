@@ -1,0 +1,95 @@
+syntax = "proto3";
+
+option csharp_namespace = "CarProject.API.Protos";
+
+package marketplace;
+
+service MarketplaceService {
+  rpc PurchaseService (PurchaseRequest) returns (PurchaseResponse);
+  rpc CreateStripeAccount (CreateStripeAccountRequest) returns (CreateStripeAccountReply);
+  rpc GetStripeAccountStatus (GetStripeAccountStatusRequest) returns (GetStripeAccountStatusReply);
+  rpc CreatePaymentIntent (CreatePaymentIntentRequest) returns (CreatePaymentIntentReply);
+  rpc CreateCheckoutSession (CheckoutSessionRequest) returns (CheckoutSessionReply);
+
+}
+message CheckoutSessionRequest {
+  string expert_id = 1;
+  double amount = 2;
+  string currency = 3;
+}
+
+message CheckoutSessionReply {
+  string checkout_url = 1;
+}
+message PurchaseRequest {
+  string buyer_id = 1;
+  string service_id = 2;
+  double amount = 3;
+  string currency = 4;
+  string expert_id = 5;
+}
+
+message PurchaseResponse {
+  string client_secret = 1;
+  string payment_intent_id = 2;
+  PaymentStatus status = 3;
+}
+
+message CreateStripeAccountRequest {
+  string user_id = 1;
+  string email = 2;
+  string country = 3;
+}
+
+message CreateStripeAccountReply {
+  string stripe_account_id = 1;
+  string onboarding_url = 2;
+  StripeAccountStatus status = 3;
+}
+
+message GetStripeAccountStatusRequest {
+  string user_id = 1;
+}
+
+message GetStripeAccountStatusReply {
+  string stripe_account_id = 1;
+  StripeAccountStatus status = 2;
+  repeated string requirements = 3;
+  bool payouts_enabled = 4;
+  bool charges_enabled = 5;
+}
+
+message CreatePaymentIntentRequest {
+  string buyer_id = 1;
+  string expert_id = 2;
+  string service_id = 3;
+  double amount = 4;
+  string currency = 5;
+  double application_fee_amount = 6;
+  string description = 7;
+}
+
+message CreatePaymentIntentReply {
+  string client_secret = 1;
+  string payment_intent_id = 2;
+  PaymentStatus status = 3;
+  double amount = 4;
+  string currency = 5;
+}
+
+enum StripeAccountStatus {
+  PENDING = 0;
+  ACTIVE = 1;
+  RESTRICTED = 2;
+  REJECTED = 3;
+}
+
+enum PaymentStatus {
+  REQUIRES_PAYMENT_METHOD = 0;
+  REQUIRES_CONFIRMATION = 1;
+  REQUIRES_ACTION = 2;
+  PROCESSING = 3;
+  SUCCEEDED = 4;
+  CANCELED = 5;
+  FAILED = 6;
+}

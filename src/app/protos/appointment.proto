@@ -8,11 +8,22 @@ service AppointmentService {
   rpc CreateAppointment (CreateAppointmentRequest) returns (AppointmentReply);
   rpc GetAppointmentById (GetAppointmentByIdRequest) returns (AppointmentReply);
   rpc GetAllAppointments (Empty) returns (AppointmentsReply);
+
   rpc GetAppointmentsByUserId (GetAppointmentsByUserIdRequest) returns (AppointmentsReply);
   rpc GetAppointmentsByExpertId (GetAppointmentsByExpertIdRequest) returns (AppointmentsReply);
   rpc DeleteAppointment (DeleteAppointmentRequest) returns (DeleteReply);
+  rpc UpdateAppointmentStatus (UpdateAppointmentStatusRequest) returns (UpdateAppointmentStatusReply);
+
 }
 
+message UpdateAppointmentStatusRequest {
+  string appointment_id = 1;
+  string new_status = 2;
+}
+
+message UpdateAppointmentStatusReply {
+  string message = 1;
+}
 message Empty {}
 message CreateAppointmentRequest {
   string user_id = 1;
@@ -49,6 +60,7 @@ message AppointmentReply {
   string status = 6;
   string address = 7;
   string notes = 8; 
+  string payment_id = 9;
 }
 
 message AppointmentsReply {

@@ -297,5 +297,48 @@ export class AppointmentServiceClient {
     this.methodDescriptorDeleteAppointment);
   }
 
+  methodDescriptorUpdateAppointmentStatus = new grpcWeb.MethodDescriptor(
+    '/appointment.AppointmentService/UpdateAppointmentStatus',
+    grpcWeb.MethodType.UNARY,
+    appointment_pb.UpdateAppointmentStatusRequest,
+    appointment_pb.UpdateAppointmentStatusReply,
+    (request: appointment_pb.UpdateAppointmentStatusRequest) => {
+      return request.serializeBinary();
+    },
+    appointment_pb.UpdateAppointmentStatusReply.deserializeBinary
+  );
+
+  updateAppointmentStatus(
+    request: appointment_pb.UpdateAppointmentStatusRequest,
+    metadata?: grpcWeb.Metadata | null): Promise<appointment_pb.UpdateAppointmentStatusReply>;
+
+  updateAppointmentStatus(
+    request: appointment_pb.UpdateAppointmentStatusRequest,
+    metadata: grpcWeb.Metadata | null,
+    callback: (err: grpcWeb.RpcError,
+               response: appointment_pb.UpdateAppointmentStatusReply) => void): grpcWeb.ClientReadableStream<appointment_pb.UpdateAppointmentStatusReply>;
+
+  updateAppointmentStatus(
+    request: appointment_pb.UpdateAppointmentStatusRequest,
+    metadata?: grpcWeb.Metadata | null,
+    callback?: (err: grpcWeb.RpcError,
+               response: appointment_pb.UpdateAppointmentStatusReply) => void) {
+    if (callback !== undefined) {
+      return this.client_.rpcCall(
+        this.hostname_ +
+          '/appointment.AppointmentService/UpdateAppointmentStatus',
+        request,
+        metadata || {},
+        this.methodDescriptorUpdateAppointmentStatus,
+        callback);
+    }
+    return this.client_.unaryCall(
+    this.hostname_ +
+      '/appointment.AppointmentService/UpdateAppointmentStatus',
+    request,
+    metadata || {},
+    this.methodDescriptorUpdateAppointmentStatus);
+  }
+
 }
 

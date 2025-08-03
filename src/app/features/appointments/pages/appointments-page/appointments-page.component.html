@@ -22,6 +22,10 @@
               <strong>Adresse:</strong> {{ appointment.getAddress() }}<br>
               <strong *ngIf="appointment.getNotes()">Notes:</strong> {{ appointment.getNotes() }}
             </p>
+            <div *ngIf="appointment.getStatus() === 'CONFIRMÉ'" class="mt-3">
+              <button class="btn btn-primary me-2" (click)="payWithStripeCheckout(appointment)">Payer avec Stripe Checkout</button>
+              <button class="btn btn-success" (click)="payWithCard(appointment)">Payer par carte intégrée</button>
+            </div>
           </div>
         </div>
       </div>

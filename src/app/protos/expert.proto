@@ -10,9 +10,18 @@ service ExpertService {
   rpc GetAllExperts (Empty) returns (ExpertsReply);
   rpc GetExpertsByAvailability (GetExpertsByAvailabilityRequest) returns (ExpertsReply);
   rpc GetExpertsBySpeciality (GetExpertsBySpecialityRequest) returns (ExpertsReply);
+    rpc GetExpertServicePrice (GetExpertByIdRequest) returns (ServicePriceReply);
   rpc DeleteExpert (DeleteExpertRequest) returns (DeleteReply);
   rpc GetExpertsByYearsOfExperience (GetExpertsByYearsOfExperienceRequest) returns (ExpertsReply);
   rpc GetExpertsByRating (GetExpertsByRatingRequest) returns (ExpertsReply);
+  rpc GetExpertByUserId (GetExpertByIdRequest) returns (ExpertReply);
+  rpc UpdateExpertPrice (UpdateExpertPriceRequest) returns (ExpertReply);
+
+
+}
+message UpdateExpertPriceRequest {
+  string expert_id = 1;
+  int64 new_price = 2;
 }
 
 service CertificationService {
@@ -48,6 +57,8 @@ message CreateExpertRequest {
   bool is_available = 7;
   float rating = 8;  // Nullable rating
   int32 years_of_experience = 9;
+  int64 service_price = 10;
+
 }
 
 message GetExpertByIdRequest {
@@ -78,6 +89,8 @@ message ExpertReply {
   string email = 9;
   int32 years_of_experience = 10;
   string review_count = 11;  // Nullable review_count
+  int64 service_price = 12;
+
 }
 
 message ExpertsReply {
@@ -86,4 +99,8 @@ message ExpertsReply {
 
 message DeleteReply {
   string message = 1;
+}
+
+message ServicePriceReply {
+  int64 service_price = 1;
 }

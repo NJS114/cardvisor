@@ -2,6 +2,28 @@ import * as jspb from 'google-protobuf'
 
 
 
+export class UpdateExpertPriceRequest extends jspb.Message {
+  getExpertId(): string;
+  setExpertId(value: string): UpdateExpertPriceRequest;
+
+  getNewPrice(): number;
+  setNewPrice(value: number): UpdateExpertPriceRequest;
+
+  serializeBinary(): Uint8Array;
+  toObject(includeInstance?: boolean): UpdateExpertPriceRequest.AsObject;
+  static toObject(includeInstance: boolean, msg: UpdateExpertPriceRequest): UpdateExpertPriceRequest.AsObject;
+  static serializeBinaryToWriter(message: UpdateExpertPriceRequest, writer: jspb.BinaryWriter): void;
+  static deserializeBinary(bytes: Uint8Array): UpdateExpertPriceRequest;
+  static deserializeBinaryFromReader(message: UpdateExpertPriceRequest, reader: jspb.BinaryReader): UpdateExpertPriceRequest;
+}
+
+export namespace UpdateExpertPriceRequest {
+  export type AsObject = {
+    expertId: string,
+    newPrice: number,
+  }
+}
+
 export class GetExpertsByYearsOfExperienceRequest extends jspb.Message {
   getYearsOfExperience(): number;
   setYearsOfExperience(value: number): GetExpertsByYearsOfExperienceRequest;
@@ -130,6 +152,9 @@ export class CreateExpertRequest extends jspb.Message {
   getYearsOfExperience(): number;
   setYearsOfExperience(value: number): CreateExpertRequest;
 
+  getServicePrice(): number;
+  setServicePrice(value: number): CreateExpertRequest;
+
   serializeBinary(): Uint8Array;
   toObject(includeInstance?: boolean): CreateExpertRequest.AsObject;
   static toObject(includeInstance: boolean, msg: CreateExpertRequest): CreateExpertRequest.AsObject;
@@ -149,6 +174,7 @@ export namespace CreateExpertRequest {
     isAvailable: boolean,
     rating: number,
     yearsOfExperience: number,
+    servicePrice: number,
   }
 }
 
@@ -258,6 +284,9 @@ export class ExpertReply extends jspb.Message {
   getReviewCount(): string;
   setReviewCount(value: string): ExpertReply;
 
+  getServicePrice(): number;
+  setServicePrice(value: number): ExpertReply;
+
   serializeBinary(): Uint8Array;
   toObject(includeInstance?: boolean): ExpertReply.AsObject;
   static toObject(includeInstance: boolean, msg: ExpertReply): ExpertReply.AsObject;
@@ -279,6 +308,7 @@ export namespace ExpertReply {
     email: string,
     yearsOfExperience: number,
     reviewCount: string,
+    servicePrice: number,
   }
 }
 
@@ -317,6 +347,24 @@ export class DeleteReply extends jspb.Message {
 export namespace DeleteReply {
   export type AsObject = {
     message: string,
+  }
+}
+
+export class ServicePriceReply extends jspb.Message {
+  getServicePrice(): number;
+  setServicePrice(value: number): ServicePriceReply;
+
+  serializeBinary(): Uint8Array;
+  toObject(includeInstance?: boolean): ServicePriceReply.AsObject;
+  static toObject(includeInstance: boolean, msg: ServicePriceReply): ServicePriceReply.AsObject;
+  static serializeBinaryToWriter(message: ServicePriceReply, writer: jspb.BinaryWriter): void;
+  static deserializeBinary(bytes: Uint8Array): ServicePriceReply;
+  static deserializeBinaryFromReader(message: ServicePriceReply, reader: jspb.BinaryReader): ServicePriceReply;
+}
+
+export namespace ServicePriceReply {
+  export type AsObject = {
+    servicePrice: number,
   }
 }
 

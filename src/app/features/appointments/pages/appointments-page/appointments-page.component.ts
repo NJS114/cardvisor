@@ -2,9 +2,9 @@ import { Component, OnInit } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { RouterModule, Router } from '@angular/router';
 import { AuthService } from '../../../../core/services/auth.service';
-import { AppointmentService, AppointmentStatus, CreateAppointmentData } from '../../../../core/services/appointment.service';
-import { AppointmentReply, AppointmentsReply } from '../../../../protos/generated/appointment_pb';
+import { AppointmentService, Appointment, AppointmentStatus } from '../../../../core/services/appointment.service';
 import { ExpertService } from '../../../../core/services/expert.service';
+import { StripeService } from '../../../../core/services/stripe.service';
 
 @Component({
   selector: 'app-appointments-page',
@@ -22,85 +22,88 @@ import { ExpertService } from '../../../../core/services/expert.service';
 
       <!-- Vue Particulier -->
       <ng-container *ngIf="userRole === 'USER'">
-        <div class="flex justify-between items-center mb-8">
-          <h1 class="text-3xl font-bold">Mes Rendez-vous</h1>
-          <button (click)="router.navigate(['/appointments/create'])"
-                  class="px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700 transition-colors">
-            <i class="fas fa-plus mr-2"></i>
-            Nouveau rendez-vous
-          </button>
-        </div>
-        
-        <!-- Rendez-vous en Attente -->
-        <div class="mb-8">
-          <div class="flex items-center mb-4">
-            <h2 class="text-xl font-semibold">🕒 Rendez-vous en Attente</h2>
-            <span class="ml-2 px-2 py-1 bg-yellow-100 text-yellow-800 rounded-full text-sm">
-              {{ getAppointmentsByStatus(AppointmentStatus.EN_ATTENTE).length }}
-            </span>
-          </div>
-          <div class="grid gap-4">
-            <div *ngFor="let appointment of getAppointmentsByStatus(AppointmentStatus.EN_ATTENTE)" 
-                 class="bg-white rounded-lg shadow p-4">
-              <div class="flex justify-between items-start">
-                <div>
-                  <p class="font-medium">Expert: {{ appointment.getExpertId() || 'Non assigné' }}</p>
-                  <p class="text-gray-600">{{ appointment.getAddress() }}</p>
-                  <p class="text-sm text-gray-500">{{ appointment.getDate() | date:'dd/MM/yyyy HH:mm' }}</p>
+        <div class="max-w-7xl mx-auto">
+          <h1 class="text-3xl font-bold mb-8">Mes Rendez-vous</h1>
+
+          <!-- Rendez-vous en attente -->
+          <div class="mb-8">
+            <h2 class="text-xl font-semibold mb-4">
+              En attente ({{ getAppointmentsByStatus(AppointmentStatus.EN_ATTENTE).length }})
+            </h2>
+            <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+              <div *ngFor="let appointment of getAppointmentsByStatus(AppointmentStatus.EN_ATTENTE)"
+                   class="bg-white rounded-lg shadow-md p-6">
+                <div class="flex justify-between items-start mb-4">
+                  <div>
+                    <p class="font-medium">{{ appointment.date | date:'long' }}</p>
+                    <p class="text-gray-600">{{ appointment.address }}</p>
+                  </div>
+                  <span class="px-3 py-1 bg-yellow-100 text-yellow-800 rounded-full text-sm">
+                    En attente
+                  </span>
                 </div>
-                <div class="flex flex-col items-end space-y-2">
-                  <span class="px-2 py-1 bg-yellow-100 text-yellow-800 rounded-full text-sm">En attente</span>
-                  <button (click)="cancelAppointment(appointment.getId())"
-                          class="px-3 py-1 text-sm text-red-600 hover:text-red-800">
+                <div class="flex justify-end space-x-4">
+                  <button (click)="confirmAppointment(appointment)"
+                          class="px-4 py-2 bg-green-600 text-white rounded hover:bg-green-700">
+                    Confirmer
+                  </button>
+                  <button (click)="cancelAppointment(appointment)"
+                          class="px-4 py-2 bg-red-600 text-white rounded hover:bg-red-700">
                     Annuler
                   </button>
                 </div>
               </div>
             </div>
           </div>
-        </div>
 
-        <!-- Rendez-vous Confirmés -->
-        <div class="mb-8">
-          <div class="flex items-center mb-4">
-            <h2 class="text-xl font-semibold">📅 Rendez-vous Confirmés</h2>
-            <span class="ml-2 px-2 py-1 bg-blue-100 text-blue-800 rounded-full text-sm">
-              {{ getAppointmentsByStatus(AppointmentStatus.CONFIRME).length }}
-            </span>
-          </div>
-          <div class="grid gap-4">
-            <div *ngFor="let appointment of getAppointmentsByStatus(AppointmentStatus.CONFIRME)" 
-                 class="bg-white rounded-lg shadow p-4">
-              <div class="flex justify-between items-start">
-                <div>
-                  <p class="font-medium">Expert: {{ appointment.getExpertId() }}</p>
-                  <p class="text-gray-600">{{ appointment.getAddress() }}</p>
-                  <p class="text-sm text-gray-500">{{ appointment.getDate() | date:'dd/MM/yyyy HH:mm' }}</p>
+          <!-- Rendez-vous confirmés -->
+          <div class="mb-8">
+            <h2 class="text-xl font-semibold mb-4">
+              Confirmés ({{ getAppointmentsByStatus(AppointmentStatus['CONFIRMÉ']).length }})
+            </h2>
+            <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+              <div *ngFor="let appointment of getAppointmentsByStatus(AppointmentStatus['CONFIRMÉ'])"
+                   class="bg-white rounded-lg shadow-md p-6">
+                <div class="flex justify-between items-start mb-4">
+                  <div>
+                    <p class="font-medium">{{ appointment.date | date:'long' }}</p>
+                    <p class="text-gray-600">{{ appointment.address }}</p>
+                  </div>
+                  <span class="px-3 py-1 bg-green-100 text-green-800 rounded-full text-sm">
+                    Confirmé
+                  </span>
                 </div>
-                <span class="px-2 py-1 bg-blue-100 text-blue-800 rounded-full text-sm">Confirmé</span>
+                <div class="flex justify-end space-x-4">
+                  <button (click)="completeAppointment(appointment)"
+                          class="px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700">
+                    Terminer
+                  </button>
+                  <button (click)="cancelAppointment(appointment)"
+                          class="px-4 py-2 bg-red-600 text-white rounded hover:bg-red-700">
+                    Annuler
+                  </button>
+                </div>
               </div>
             </div>
           </div>
-        </div>
 
-        <!-- Rendez-vous Réalisés -->
-        <div class="mb-8">
-          <div class="flex items-center mb-4">
-            <h2 class="text-xl font-semibold">✅ Rendez-vous Réalisés</h2>
-            <span class="ml-2 px-2 py-1 bg-green-100 text-green-800 rounded-full text-sm">
-              {{ getAppointmentsByStatus(AppointmentStatus.REALISE).length }}
-            </span>
-          </div>
-          <div class="grid gap-4">
-            <div *ngFor="let appointment of getAppointmentsByStatus(AppointmentStatus.REALISE)" 
-                 class="bg-white rounded-lg shadow p-4">
-              <div class="flex justify-between items-start">
-                <div>
-                  <p class="font-medium">Expert: {{ appointment.getExpertId() }}</p>
-                  <p class="text-gray-600">{{ appointment.getAddress() }}</p>
-                  <p class="text-sm text-gray-500">{{ appointment.getDate() | date:'dd/MM/yyyy HH:mm' }}</p>
+          <!-- Rendez-vous terminés -->
+          <div class="mb-8">
+            <h2 class="text-xl font-semibold mb-4">
+              Terminés ({{ getAppointmentsByStatus(AppointmentStatus['RÉALISÉ']).length }})
+            </h2>
+            <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+              <div *ngFor="let appointment of getAppointmentsByStatus(AppointmentStatus['RÉALISÉ'])"
+                   class="bg-white rounded-lg shadow-md p-6">
+                <div class="flex justify-between items-start mb-4">
+                  <div>
+                    <p class="font-medium">{{ appointment.date | date:'long' }}</p>
+                    <p class="text-gray-600">{{ appointment.address }}</p>
+                  </div>
+                  <span class="px-3 py-1 bg-blue-100 text-blue-800 rounded-full text-sm">
+                    Terminé
+                  </span>
                 </div>
-                <span class="px-2 py-1 bg-green-100 text-green-800 rounded-full text-sm">Réalisé</span>
               </div>
             </div>
           </div>
@@ -127,14 +130,14 @@ import { ExpertService } from '../../../../core/services/expert.service';
                  class="bg-white rounded-lg shadow p-4">
               <div class="flex justify-between items-start">
                 <div>
-                  <p class="font-medium">Client: {{ appointment.getUserId() }}</p>
-                  <p class="text-gray-600">{{ appointment.getAddress() }}</p>
-                  <p class="text-sm text-gray-500">{{ appointment.getDate() | date:'dd/MM/yyyy HH:mm' }}</p>
-                  <p class="text-sm text-gray-500 mt-2">{{ appointment.getNotes() }}</p>
+                  <p class="font-medium">Client: {{ appointment.userId }}</p>
+                  <p class="text-gray-600">{{ appointment.address }}</p>
+                  <p class="text-sm text-gray-500">{{ appointment.date | date:'dd/MM/yyyy HH:mm' }}</p>
+                  <p class="text-sm text-gray-500 mt-2">{{ appointment.notes }}</p>
                 </div>
                 <div class="flex flex-col items-end space-y-2">
                   <span class="px-2 py-1 bg-yellow-100 text-yellow-800 rounded-full text-sm">En attente</span>
-                  <button (click)="acceptAppointment(appointment.getId())"
+                  <button (click)="acceptAppointment(appointment.id)"
                           class="px-3 py-1 text-sm text-green-600 hover:text-green-800">
                     Accepter
                   </button>
@@ -153,25 +156,25 @@ import { ExpertService } from '../../../../core/services/expert.service';
             <div class="flex items-center mb-4">
               <h3 class="text-xl font-semibold">📅 Rendez-vous Confirmés</h3>
               <span class="ml-2 px-2 py-1 bg-blue-100 text-blue-800 rounded-full text-sm">
-                {{ getExpertAppointmentsByStatus(AppointmentStatus.CONFIRME).length }}
+                {{ getExpertAppointmentsByStatus(AppointmentStatus['CONFIRMÉ']).length }}
               </span>
             </div>
             <div class="grid gap-4">
-              <div *ngIf="getExpertAppointmentsByStatus(AppointmentStatus.CONFIRME).length === 0" class="text-center py-8">
+              <div *ngIf="getExpertAppointmentsByStatus(AppointmentStatus['CONFIRMÉ']).length === 0" class="text-center py-8">
                 <p class="text-gray-500">Aucun rendez-vous confirmé</p>
               </div>
-              <div *ngFor="let appointment of getExpertAppointmentsByStatus(AppointmentStatus.CONFIRME)" 
+              <div *ngFor="let appointment of getExpertAppointmentsByStatus(AppointmentStatus['CONFIRMÉ'])" 
                    class="bg-white rounded-lg shadow p-4">
                 <div class="flex justify-between items-start">
                   <div>
-                    <p class="font-medium">Client: {{ appointment.getUserId() }}</p>
-                    <p class="text-gray-600">{{ appointment.getAddress() }}</p>
-                    <p class="text-sm text-gray-500">{{ appointment.getDate() | date:'dd/MM/yyyy HH:mm' }}</p>
-                    <p class="text-sm text-gray-500 mt-2">{{ appointment.getNotes() }}</p>
+                    <p class="font-medium">Client: {{ appointment.userId }}</p>
+                    <p class="text-gray-600">{{ appointment.address }}</p>
+                    <p class="text-sm text-gray-500">{{ appointment.date | date:'dd/MM/yyyy HH:mm' }}</p>
+                    <p class="text-sm text-gray-500 mt-2">{{ appointment.notes }}</p>
                   </div>
                   <div class="flex flex-col items-end space-y-2">
                     <span class="px-2 py-1 bg-blue-100 text-blue-800 rounded-full text-sm">Confirmé</span>
-                    <button (click)="completeAppointment(appointment.getId())"
+                    <button (click)="completeAppointment(appointment)"
                             class="px-3 py-1 text-sm text-green-600 hover:text-green-800">
                       Terminer
                     </button>
@@ -186,23 +189,23 @@ import { ExpertService } from '../../../../core/services/expert.service';
             <div class="flex items-center mb-4">
               <h3 class="text-xl font-semibold">✅ Rendez-vous Réalisés</h3>
               <span class="ml-2 px-2 py-1 bg-green-100 text-green-800 rounded-full text-sm">
-                {{ getExpertAppointmentsByStatus(AppointmentStatus.REALISE).length }}
+                {{ getExpertAppointmentsByStatus(AppointmentStatus['RÉALISÉ']).length }}
               </span>
             </div>
             <div class="grid gap-4">
-              <div *ngIf="getExpertAppointmentsByStatus(AppointmentStatus.REALISE).length === 0" class="text-center py-8">
+              <div *ngIf="getExpertAppointmentsByStatus(AppointmentStatus['RÉALISÉ']).length === 0" class="text-center py-8">
                 <p class="text-gray-500">Aucun rendez-vous réalisé</p>
               </div>
-              <div *ngFor="let appointment of getExpertAppointmentsByStatus(AppointmentStatus.REALISE)" 
+              <div *ngFor="let appointment of getExpertAppointmentsByStatus(AppointmentStatus['RÉALISÉ'])" 
                    class="bg-white rounded-lg shadow p-4">
                 <div class="flex justify-between items-start">
                   <div>
-                    <p class="font-medium">Client: {{ appointment.getUserId() }}</p>
-                    <p class="text-gray-600">{{ appointment.getAddress() }}</p>
-                    <p class="text-sm text-gray-500">{{ appointment.getDate() | date:'dd/MM/yyyy HH:mm' }}</p>
-                    <p class="text-sm text-gray-500 mt-2">{{ appointment.getNotes() }}</p>
+                    <p class="font-medium">Client: {{ appointment.userId }}</p>
+                    <p class="text-gray-600">{{ appointment.address }}</p>
+                    <p class="text-sm text-gray-500">{{ appointment.date | date:'dd/MM/yyyy HH:mm' }}</p>
+                    <p class="text-sm text-gray-500 mt-2">{{ appointment.notes }}</p>
                   </div>
-                  <span class="px-2 py-1 bg-green-100 text-green-800 rounded-full text-sm">Réalisé</span>
+                  <span class="px-2 py-1 bg-green-100 text-green-800 rounded-full text-sm">Terminé</span>
                 </div>
               </div>
             </div>
@@ -218,8 +221,8 @@ import { ExpertService } from '../../../../core/services/expert.service';
   `]
 })
 export class AppointmentsPageComponent implements OnInit {
-  appointments: AppointmentReply[] = [];
-  pendingAppointments: AppointmentReply[] = [];
+  appointments: Appointment[] = [];
+  pendingAppointments: Appointment[] = [];
   userRole: string = '';
   errorMessage = '';
   AppointmentStatus = AppointmentStatus;
@@ -229,12 +232,13 @@ export class AppointmentsPageComponent implements OnInit {
     private authService: AuthService,
     private appointmentService: AppointmentService,
     private expertService: ExpertService,
-    public router: Router
+    public router: Router,
+    private stripeService: StripeService
   ) {}
 
   ngOnInit(): void {
     this.userRole = this.authService.getCurrentUser()?.role || '';
-    console.log('User Role:', this.userRole); // Debug log
+    console.log('User Role:', this.userRole);
 
     if (this.userRole === 'EXPERT') {
       this.loadExpertId();
@@ -245,154 +249,123 @@ export class AppointmentsPageComponent implements OnInit {
 
   private loadExpertId(): void {
     const userId = this.authService.getCurrentUser()?.id;
-    if (!userId) {
-      console.error('ID utilisateur manquant');
-      return;
-    }
-
-    this.expertService.getAllExperts().subscribe({
-      next: (response) => {
-        const experts = response.getExpertsList();
-        const expert = experts.find(e => e.getUserId() === userId);
-        
-        if (expert) {
-          this.expertId = expert.getId();
-          console.log('Expert ID:', this.expertId); // Debug log
+    if (userId) {
+      this.expertService.getExpertById(userId).subscribe({
+        next: (expert: any) => {
+          this.expertId = expert.id;
           this.loadAppointments();
-        } else {
-          console.error('Expert non trouvé pour l\'utilisateur:', userId);
-          this.errorMessage = 'Expert non trouvé';
+        },
+        error: (error: Error) => {
+          console.error('Erreur lors du chargement de l\'expert:', error);
+          this.errorMessage = 'Erreur lors du chargement des informations de l\'expert';
         }
-      },
-      error: (error: Error) => {
-        console.error('Erreur lors du chargement des experts:', error);
-        this.errorMessage = 'Erreur lors du chargement des informations de l\'expert';
-      }
-    });
+      });
+    }
   }
 
   loadAppointments(): void {
-    const userId = this.authService.getCurrentUser()?.id;
-    if (!userId) {
-      console.error('ID utilisateur manquant');
-      return;
-    }
+    const user = this.authService.getCurrentUser();
+    if (!user) return;
 
-    console.log('Loading appointments for role:', this.userRole); // Debug log
-
-    if (this.userRole === 'USER') {
-      this.appointmentService.getAppointmentsByUserId(userId).subscribe({
-        next: (response: AppointmentsReply) => {
-          this.appointments = response.getAppointmentsList();
-          console.log('User appointments loaded:', this.appointments.length); // Debug log
+    if (user.role === 'EXPERT') {
+      this.expertService.getExpertByUserId(user.id).subscribe({
+        next: (expert) => {
+          const expertId = typeof expert.getId === 'function' ? expert.getId() : undefined;
+          if (!expertId) {
+            console.error('Impossible de récupérer l\'id de l\'expert');
+            this.errorMessage = 'Impossible de récupérer l\'id de l\'expert';
+            return;
+          }
+          this.appointmentService.getAppointmentsByExpertId(expertId).subscribe({
+            next: (appointments) => {
+              this.appointments = appointments;
+              this.pendingAppointments = this.getAppointmentsByStatus(AppointmentStatus.EN_ATTENTE);
+            },
+            error: (error) => {
+              console.error('Erreur lors du chargement des rendez-vous:', error);
+              this.errorMessage = 'Erreur lors du chargement des rendez-vous';
+            }
+          });
         },
-        error: (error: Error) => {
+        error: (error: any) => {
+          console.error('Erreur lors de la récupération de l\'expert:', error);
+          this.errorMessage = 'Erreur lors de la récupération de l\'expert';
+        }
+      });
+    } else {
+      this.appointmentService.getAppointmentsByUserId(user.id).subscribe({
+        next: (appointments) => {
+          this.appointments = appointments;
+        },
+        error: (error) => {
           console.error('Erreur lors du chargement des rendez-vous:', error);
           this.errorMessage = 'Erreur lors du chargement des rendez-vous';
         }
       });
-    } else if (this.userRole === 'EXPERT' && this.expertId) {
-      // Charger les rendez-vous assignés à l'expert
-      this.appointmentService.getAppointmentsByExpertId(this.expertId).subscribe({
-        next: (response: AppointmentsReply) => {
-          this.appointments = response.getAppointmentsList();
-          console.log('Expert appointments loaded:', this.appointments.length); // Debug log
-        },
-        error: (error: Error) => {
-          console.error('Erreur lors du chargement des rendez-vous de l\'expert:', error);
-          this.errorMessage = 'Erreur lors du chargement des rendez-vous';
-        }
-      });
-
-      // Pour les rendez-vous en attente, on récupère tous les rendez-vous et on filtre
-      this.appointmentService.getAllAppointments().subscribe({
-        next: (response: AppointmentsReply) => {
-          this.pendingAppointments = response.getAppointmentsList().filter(
-            appointment => 
-              appointment.getStatus() === AppointmentStatus.EN_ATTENTE && 
-              (!appointment.getExpertId() || appointment.getExpertId() === '')
-          );
-          console.log('Pending appointments loaded:', this.pendingAppointments.length); // Debug log
-        },
-        error: (error: Error) => {
-          console.error('Erreur lors du chargement des rendez-vous en attente:', error);
-          this.errorMessage = 'Erreur lors du chargement des rendez-vous en attente';
-        }
-      });
     }
   }
 
-  getAppointmentsByStatus(status: AppointmentStatus): AppointmentReply[] {
-    return this.appointments.filter(appointment => appointment.getStatus() === status);
+  getAppointmentsByStatus(status: AppointmentStatus): Appointment[] {
+    return this.appointments.filter(a => a.status === status);
   }
 
-  getExpertAppointmentsByStatus(status: AppointmentStatus): AppointmentReply[] {
-    return this.appointments.filter(appointment => appointment.getStatus() === status);
+  getExpertAppointmentsByStatus(status: AppointmentStatus): Appointment[] {
+    return this.appointments.filter(appointment => appointment.status === status);
   }
 
-  getPendingAppointments(): AppointmentReply[] {
-    return this.pendingAppointments || [];
-  }
-
-  cancelAppointment(id: string): void {
-    this.appointmentService.deleteAppointment(id).subscribe({
-      next: () => {
+  cancelAppointment(appointment: Appointment): void {
+    this.appointmentService.cancelAppointment(appointment.id).subscribe({
+      next: (message: string) => {
         this.loadAppointments();
       },
-      error: (error: Error) => {
+      error: (error) => {
+        console.error('Erreur lors de l\'annulation du rendez-vous:', error);
         this.errorMessage = 'Erreur lors de l\'annulation du rendez-vous';
-        console.error('Erreur:', error);
       }
     });
   }
 
   acceptAppointment(id: string): void {
-    const appointment = this.pendingAppointments.find(a => a.getId() === id);
-    if (!appointment || !this.expertId) return;
-
-    const updateData: CreateAppointmentData = {
-      date: appointment.getDate(),
-      address: appointment.getAddress(),
-      notes: appointment.getNotes(),
-      status: AppointmentStatus.CONFIRME,
-      userId: appointment.getUserId(),
-      expertId: this.expertId,
-      vehicleId: appointment.getVehicleId()
-    };
-
-    this.appointmentService.createAppointment(updateData).subscribe({
-      next: () => {
+    this.appointmentService.updateAppointmentStatus(id, AppointmentStatus['CONFIRMÉ']).subscribe({
+      next: (message: string) => {
         this.loadAppointments();
       },
-      error: (error: Error) => {
+      error: (error) => {
+        console.error('Erreur lors de l\'acceptation du rendez-vous:', error);
         this.errorMessage = 'Erreur lors de l\'acceptation du rendez-vous';
-        console.error('Erreur:', error);
       }
     });
   }
 
-  completeAppointment(id: string): void {
-    const appointment = this.appointments.find(a => a.getId() === id);
-    if (!appointment) return;
-
-    const updateData: CreateAppointmentData = {
-      date: appointment.getDate(),
-      address: appointment.getAddress(),
-      notes: appointment.getNotes(),
-      status: AppointmentStatus.REALISE,
-      userId: appointment.getUserId(),
-      expertId: appointment.getExpertId(),
-      vehicleId: appointment.getVehicleId()
-    };
-
-    this.appointmentService.createAppointment(updateData).subscribe({
-      next: () => {
+  completeAppointment(appointment: Appointment): void {
+    this.appointmentService.updateAppointmentStatus(appointment.id, AppointmentStatus['RÉALISÉ']).subscribe({
+      next: (message: string) => {
         this.loadAppointments();
       },
-      error: (error: Error) => {
+      error: (error) => {
+        console.error('Erreur lors de la finalisation du rendez-vous:', error);
         this.errorMessage = 'Erreur lors de la finalisation du rendez-vous';
-        console.error('Erreur:', error);
       }
     });
+  }
+
+  confirmAppointment(appointment: Appointment): void {
+    this.appointmentService.updateAppointmentStatus(appointment.id, AppointmentStatus['CONFIRMÉ']).subscribe({
+      next: (message: string) => {
+        this.loadAppointments();
+      },
+      error: (error) => {
+        console.error('Erreur lors de la confirmation du rendez-vous:', error);
+        this.errorMessage = 'Erreur lors de la confirmation du rendez-vous';
+      }
+    });
+  }
+
+  payWithStripeCheckout(appointment: Appointment): void {
+    this.router.navigate(['/payments/form'], { queryParams: { appointmentId: appointment.id, mode: 'checkout' } });
+  }
+
+  payWithCard(appointment: Appointment): void {
+    this.router.navigate(['/payments/form'], { queryParams: { appointmentId: appointment.id, mode: 'direct' } });
   }
 } 

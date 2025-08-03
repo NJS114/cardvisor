@@ -1,6 +1,6 @@
 import { Injectable } from '@angular/core';
 import { Observable } from 'rxjs';
-import { ExpertReply, ExpertsReply, GetExpertByIdRequest, GetExpertsByAvailabilityRequest, GetExpertsBySpecialityRequest, CreateExpertRequest, DeleteExpertRequest, DeleteReply, Empty, GetExpertsByYearsOfExperienceRequest, GetExpertsByRatingRequest } from '../../protos/generated/expert_pb';
+import { ExpertReply, ExpertsReply, GetExpertByIdRequest, GetExpertsByAvailabilityRequest, GetExpertsBySpecialityRequest, CreateExpertRequest, DeleteExpertRequest, DeleteReply, Empty, GetExpertsByYearsOfExperienceRequest, GetExpertsByRatingRequest, ServicePriceReply } from '../../protos/generated/expert_pb';
 import { ExpertServiceClient } from '../../protos/generated/ExpertServiceClientPb';
 import { createGrpcClient } from '../../protos/proto.config';
 
@@ -168,6 +168,39 @@ export class ExpertService {
           observer.error(err);
         } else {
           console.log('Expert supprimé avec succès:', response.toObject());
+          observer.next(response);
+          observer.complete();
+        }
+      });
+    });
+  }
+
+  getExpertByUserId(userId: string): Observable<ExpertReply> {
+    console.log('Récupération de l\'expert par userId:', userId);
+    const request = new GetExpertByIdRequest();
+    request.setId(userId);
+    return new Observable<ExpertReply>(observer => {
+      this.client.getExpertByUserId(request, null, (err: Error, response: ExpertReply) => {
+        if (err) {
+          console.error('Erreur lors de la récupération de l\'expert par userId:', err);
+          observer.error(err);
+        } else {
+          console.log('Expert récupéré par userId avec succès:', response.toObject());
+          observer.next(response);
+          observer.complete();
+        }
+      });
+    });
+  }
+
+  getExpertServicePrice(expertId: string): Observable<ServicePriceReply> {
+    const request = new GetExpertByIdRequest();
+    request.setId(expertId);
+    return new Observable<ServicePriceReply>(observer => {
+      this.client.getExpertServicePrice(request, null, (err: Error, response: ServicePriceReply) => {
+        if (err) {
+          observer.error(err);
+        } else {
           observer.next(response);
           observer.complete();
         }

@@ -1,116 +1,112 @@
 import { Component, OnInit } from '@angular/core';
 import { FormBuilder, FormGroup, Validators, ReactiveFormsModule } from '@angular/forms';
-import { Router, ActivatedRoute } from '@angular/router';
+import { ActivatedRoute, Router } from '@angular/router';
+import { AppointmentService, AppointmentStatus } from '../../../../core/services/appointment.service';
 import { CommonModule } from '@angular/common';
-import { AppointmentService, CreateAppointmentData, AppointmentStatus } from '../../../../core/services/appointment.service';
-import { ExpertService } from '../../../../core/services/expert.service';
-import { ExpertReply, ExpertsReply } from '../../../../protos/generated/expert_pb';
-import { AppointmentReply } from '../../../../protos/generated/appointment_pb';
-import { AddressAutocompleteComponent } from '../../../../shared/components/address-autocomplete/address-autocomplete.component';
 
 @Component({
   selector: 'app-appointment-form',
-  templateUrl: './appointment-form.component.html',
   standalone: true,
-  imports: [
-    CommonModule,
-    ReactiveFormsModule,
-    AddressAutocompleteComponent
-  ]
+  imports: [CommonModule, ReactiveFormsModule],
+  template: `
+    <div class="container mx-auto px-4 py-8">
+      <div class="max-w-2xl mx-auto">
+        <h1 class="text-3xl font-bold mb-8">Prendre un rendez-vous</h1>
+
+        <form [formGroup]="appointmentForm" (ngSubmit)="onSubmit()" class="space-y-6">
+          <!-- Date -->
+          <div>
+            <label for="date" class="block text-sm font-medium text-gray-700">Date et heure</label>
+            <input type="datetime-local" id="date" formControlName="date"
+                   class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500">
+          </div>
+
+          <!-- Adresse -->
+          <div>
+            <label for="address" class="block text-sm font-medium text-gray-700">Adresse</label>
+            <input type="text" id="address" formControlName="address"
+                   class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500">
+          </div>
+
+          <!-- Notes -->
+          <div>
+            <label for="notes" class="block text-sm font-medium text-gray-700">Notes</label>
+            <textarea id="notes" formControlName="notes" rows="3"
+                      class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500"></textarea>
+          </div>
+
+          <!-- Durée -->
+          <div>
+            <label for="durationMinutes" class="block text-sm font-medium text-gray-700">Durée (minutes)</label>
+            <input type="number" id="durationMinutes" formControlName="durationMinutes"
+                   class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500">
+          </div>
+
+          <!-- Boutons -->
+          <div class="flex justify-end space-x-4">
+            <button type="button" (click)="goBack()"
+                    class="px-4 py-2 text-gray-700 bg-gray-100 rounded-md hover:bg-gray-200">
+              Annuler
+            </button>
+            <button type="submit" [disabled]="!appointmentForm.valid"
+                    class="px-4 py-2 text-white bg-blue-600 rounded-md hover:bg-blue-700 disabled:opacity-50">
+              Confirmer
+            </button>
+          </div>
+        </form>
+      </div>
+    </div>
+  `
 })
 export class AppointmentFormComponent implements OnInit {
   appointmentForm: FormGroup;
-  isSubmitting = false;
-  errorMessage = '';
-  experts: ExpertReply[] = [];
-  appointmentStatus = AppointmentStatus;
+  expertId: string | null = null;
+  vehicleId: string | null = null;
 
   constructor(
     private fb: FormBuilder,
     private appointmentService: AppointmentService,
-    private expertService: ExpertService,
-    private router: Router,
-    private route: ActivatedRoute
+    private route: ActivatedRoute,
+    private router: Router
   ) {
     this.appointmentForm = this.fb.group({
-      date: ['', [Validators.required]],
-      address: ['', [Validators.required]],
+      date: ['', Validators.required],
+      address: ['', Validators.required],
       notes: [''],
-      expertId: [''] // Rendu optionnel
+      durationMinutes: [60, [Validators.required, Validators.min(15)]]
     });
   }
 
   ngOnInit(): void {
-    this.loadExperts();
-    const id = this.route.snapshot.paramMap.get('id');
-    if (id) {
-      this.loadAppointment(id);
+    this.expertId = this.route.snapshot.queryParamMap.get('expertId');
+    this.vehicleId = this.route.snapshot.queryParamMap.get('vehicleId');
+
+    if (!this.expertId || !this.vehicleId) {
+      this.router.navigate(['/']);
     }
   }
 
-  loadExperts(): void {
-    this.expertService.getAllExperts().subscribe(
-      (response: ExpertsReply) => {
-        this.experts = response.getExpertsList();
-      },
-      (error) => {
-        this.errorMessage = 'Erreur lors du chargement des experts';
-        console.error('Erreur lors du chargement des experts:', error);
-      }
-    );
-  }
-
-  loadAppointment(id: string): void {
-    this.appointmentService.getAppointmentById(id).subscribe(
-      (appointment: AppointmentReply) => {
-        const date = appointment.getDate();
-        const [datePart] = date.split('T');
-        
-        this.appointmentForm.patchValue({
-          expertId: appointment.getExpertId(),
-          vehicleId: appointment.getVehicleId(),
-          date: datePart,
-          notes: appointment.getNotes(),
-          address: appointment.getAddress()
-        });
-      },
-      (error: Error) => {
-        console.error('Erreur lors du chargement du rendez-vous:', error);
-      }
-    );
-  }
-
-  onAddressSelected(address: string): void {
-    this.appointmentForm.patchValue({ address });
-  }
-
   onSubmit(): void {
-    if (this.appointmentForm.valid) {
-      this.isSubmitting = true;
-      this.errorMessage = '';
-
-      const formData: CreateAppointmentData = {
-        date: this.appointmentForm.value.date,
-        address: this.appointmentForm.value.address,
-        notes: this.appointmentForm.value.notes,
+    if (this.appointmentForm.valid && this.expertId && this.vehicleId) {
+      const appointmentData = {
+        ...this.appointmentForm.value,
         status: AppointmentStatus.EN_ATTENTE,
-        expertId: this.appointmentForm.value.expertId || undefined
+        expertId: this.expertId,
+        vehicleId: this.vehicleId
       };
 
-      this.appointmentService.createAppointment(formData).subscribe(
-        (appointment: AppointmentReply) => {
-          this.isSubmitting = false;
+      this.appointmentService.createAppointment(appointmentData).subscribe({
+        next: () => {
           this.router.navigate(['/appointments']);
         },
-        (error) => {
-          this.isSubmitting = false;
-          this.errorMessage = error.message || 'Une erreur est survenue lors de la création du rendez-vous';
+        error: (error) => {
+          console.error('Erreur lors de la création du rendez-vous:', error);
         }
-      );
+      });
     }
   }
 
   goBack(): void {
-    this.router.navigate(['/appointments']);
+    this.router.navigate(['/']);
   }
 } 

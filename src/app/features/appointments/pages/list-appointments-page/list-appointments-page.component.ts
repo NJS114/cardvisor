@@ -1,5 +1,7 @@
 import { Component, OnInit } from '@angular/core';
-import { AppointmentService } from '../../../../core/services/appointment.service';
+import { CommonModule } from '@angular/common';
+import { RouterModule } from '@angular/router';
+import { AppointmentService, Appointment, AppointmentStatus } from '../../../../core/services/appointment.service';
 import { ExpertService } from '../../../../core/services/expert.service';
 import { VehicleService } from '../../../../core/services/vehicle.service';
 import { AppointmentReply, AppointmentsReply } from '../../../../protos/generated/appointment_pb';
@@ -7,72 +9,61 @@ import { ExpertReply } from '../../../../protos/generated/expert_pb';
 import { VehicleReply } from '../../../../protos/generated/vehicle_pb';
 import { AuthService } from '../../../../core/services/auth.service';
 import { Router } from '@angular/router';
+import { StripeService } from '../../../../core/services/stripe.service';
 
 @Component({
   selector: 'app-list-appointments-page',
+  standalone: true,
+  imports: [CommonModule, RouterModule],
   template: `
     <div class="container mx-auto px-4 py-8">
-      <div class="flex justify-between items-center mb-8">
-        <h1 class="text-3xl font-bold">Mes Rendez-vous</h1>
-        <button (click)="createAppointment()"
-                class="px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700 transition-colors">
-          <i class="fas fa-plus mr-2"></i>
-          Nouveau rendez-vous
-        </button>
-      </div>
-      
-      <div *ngIf="loading" class="flex justify-center items-center py-8">
-        <div class="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600"></div>
-      </div>
+      <div class="max-w-7xl mx-auto">
+        <h1 class="text-3xl font-bold mb-8">Mes Rendez-vous</h1>
 
-      <div *ngIf="!loading && appointments.length === 0" class="text-center py-8">
-        <p class="text-gray-500">Vous n'avez pas encore de rendez-vous.</p>
-      </div>
-      
-      <div *ngIf="!loading && appointments.length > 0" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-        <div *ngFor="let appointment of appointments" 
-             class="bg-white rounded-lg shadow-md p-6 hover:shadow-lg transition-shadow">
-          <div class="flex justify-between items-start mb-4">
-            <h2 class="text-xl font-semibold">{{ getVehicleModel(appointment.getVehicleId()) }}</h2>
-            <span [class]="getStatusClass(appointment.getStatus())">
-              {{ appointment.getStatus() }}
-            </span>
-          </div>
-          
-          <div class="space-y-2 text-gray-600">
-            <p>
-              <i class="fas fa-calendar mr-2"></i>
-              {{ formatDate(appointment.getDate()) }}
-            </p>
-            <p>
-              <i class="fas fa-clock mr-2"></i>
-              {{ formatTime(appointment.getDate()) }}
-            </p>
-            <p>
-              <i class="fas fa-user mr-2"></i>
-              {{ getExpertName(appointment.getExpertId()) }}
-            </p>
-            <p *ngIf="appointment.getAddress()">
-              <i class="fas fa-map-marker-alt mr-2"></i>
-              {{ appointment.getAddress() }}
-            </p>
-          </div>
-          
-          <div class="mt-6 flex justify-end space-x-4">
-            <button (click)="viewDetails(appointment.getId())"
-                    class="px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700 transition-colors">
-              Voir détails
-            </button>
+        <div *ngIf="loading" class="flex justify-center items-center py-8">
+          <div class="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
+        </div>
+
+        <div *ngIf="!loading && appointments.length === 0" class="text-center py-8">
+          <p class="text-gray-500">Aucun rendez-vous trouvé</p>
+        </div>
+
+        <div *ngIf="!loading && appointments.length > 0" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+          <div *ngFor="let appointment of appointments" 
+               class="bg-white rounded-lg shadow-md p-6">
+            <div class="flex justify-between items-start mb-4">
+              <div>
+                <p class="font-medium">{{ appointment.date | date:'long' }}</p>
+                <p class="text-gray-600">{{ appointment.address }}</p>
+              </div>
+              <span [class]="getStatusClass(appointment.status)">
+                {{ getStatusLabel(appointment.status) }}
+              </span>
+            </div>
+            <div class="flex justify-end space-x-4">
+              <button (click)="viewAppointment(appointment.id)"
+                      class="px-4 py-2 text-blue-600 hover:text-blue-800">
+                Voir détails
+              </button>
+              <button *ngIf="canPay(appointment)" (click)="payerCheckout(appointment)"
+                      class="px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700">
+                Payer avec Stripe Checkout
+              </button>
+              <button *ngIf="canPay(appointment)" (click)="payerDirect(appointment)"
+                      class="px-4 py-2 bg-green-600 text-white rounded hover:bg-green-700">
+                Payer par carte intégrée
+              </button>
+            </div>
           </div>
         </div>
       </div>
     </div>
-  `,
-  styles: []
+  `
 })
 export class ListAppointmentsPageComponent implements OnInit {
-  appointments: AppointmentReply[] = [];
-  loading = true;
+  appointments: Appointment[] = [];
+  loading = false;
+  AppointmentStatus = AppointmentStatus;
   private expertCache: Map<string, ExpertReply> = new Map();
   private vehicleCache: Map<string, VehicleReply> = new Map();
 
@@ -81,32 +72,86 @@ export class ListAppointmentsPageComponent implements OnInit {
     private expertService: ExpertService,
     private vehicleService: VehicleService,
     private authService: AuthService,
-    private router: Router
+    private router: Router,
+    private stripeService: StripeService
   ) {}
 
   ngOnInit(): void {
     this.loadAppointments();
   }
 
-  private loadAppointments(): void {
-    const userId = localStorage.getItem('auth_token');
-    if (!userId) {
-      console.error('Aucun ID utilisateur trouvé');
-      this.router.navigate(['/auth/login']);
-      return;
+  loadAppointments(): void {
+    this.loading = true;
+    const user = this.authService.getCurrentUser();
+    if (user && user.role === 'USER') {
+      this.appointmentService.getAppointmentsByUserId(user.id).subscribe({
+        next: (appointments: Appointment[]) => {
+          this.appointments = appointments;
+          this.loading = false;
+        },
+        error: (error: Error) => {
+          console.error('Erreur lors du chargement des rendez-vous:', error);
+          this.loading = false;
+        }
+      });
+    } else if (user && user.role === 'EXPERT') {
+      this.appointmentService.getAppointmentsByExpertId(user.id).subscribe({
+        next: (appointments: Appointment[]) => {
+          this.appointments = appointments;
+          this.loading = false;
+        },
+        error: (error: Error) => {
+          console.error('Erreur lors du chargement des rendez-vous:', error);
+          this.loading = false;
+        }
+      });
+    } else {
+      this.appointmentService.getAllAppointments().subscribe({
+        next: (appointments: Appointment[]) => {
+          this.appointments = appointments;
+          this.loading = false;
+        },
+        error: (error: Error) => {
+          console.error('Erreur lors du chargement des rendez-vous:', error);
+          this.loading = false;
+        }
+      });
     }
+  }
 
-    this.appointmentService.getAppointmentsByUserId(userId).subscribe({
-      next: (response: AppointmentsReply) => {
-        console.log('Rendez-vous chargés:', response.toObject());
-        this.appointments = response.getAppointmentsList();
-        this.loading = false;
-      },
-      error: (error) => {
-        console.error('Erreur lors du chargement des rendez-vous:', error);
-        this.loading = false;
-      }
-    });
+  getStatusClass(status: AppointmentStatus): string {
+    const baseClasses = 'px-3 py-1 rounded-full text-sm font-medium';
+    switch (status) {
+      case AppointmentStatus.EN_ATTENTE:
+        return `${baseClasses} bg-yellow-100 text-yellow-800`;
+      case AppointmentStatus.CONFIRMÉ:
+        return `${baseClasses} bg-green-100 text-green-800`;
+      case AppointmentStatus.ANNULÉ:
+        return `${baseClasses} bg-red-100 text-red-800`;
+      case AppointmentStatus.RÉALISÉ:
+        return `${baseClasses} bg-blue-100 text-blue-800`;
+      default:
+        return `${baseClasses} bg-gray-100 text-gray-800`;
+    }
+  }
+
+  getStatusLabel(status: AppointmentStatus): string {
+    switch (status) {
+      case AppointmentStatus.EN_ATTENTE:
+        return 'En attente';
+      case AppointmentStatus.CONFIRMÉ:
+        return 'Confirmé';
+      case AppointmentStatus.RÉALISÉ:
+        return 'Réalisé';
+      case AppointmentStatus.ANNULÉ:
+        return 'Annulé';
+      default:
+        return 'Inconnu';
+    }
+  }
+
+  viewAppointment(id: string): void {
+    this.router.navigate(['/appointments', id]);
   }
 
   getExpertName(expertId: string): string {
@@ -149,45 +194,105 @@ export class ListAppointmentsPageComponent implements OnInit {
     return 'Chargement...';
   }
 
-  getStatusClass(status: string): string {
-    const baseClasses = 'px-2 py-1 rounded text-sm font-medium';
-    switch (status.toLowerCase()) {
-      case 'pending':
-        return `${baseClasses} bg-yellow-100 text-yellow-800`;
-      case 'confirmed':
-        return `${baseClasses} bg-green-100 text-green-800`;
-      case 'cancelled':
-        return `${baseClasses} bg-red-100 text-red-800`;
-      case 'completed':
-        return `${baseClasses} bg-blue-100 text-blue-800`;
-      default:
-        return `${baseClasses} bg-gray-100 text-gray-800`;
+  isUserOwner(appointment: Appointment): boolean {
+    const user = this.authService.getCurrentUser();
+    return !!user && user.id === appointment.userId;
+  }
+
+  canPay(appointment: Appointment): boolean {
+    return this.isUserOwner(appointment) && (appointment.status === AppointmentStatus.EN_ATTENTE || appointment.status === AppointmentStatus.CONFIRMÉ);
+  }
+
+  async payerCheckout(appointment: Appointment) {
+    try {
+      console.log('payerCheckout appelé', appointment);
+      const payments = (await this.stripeService.getUserPayments(appointment.userId).toPromise()) || [];
+      const payment = payments.find(p => p.appointmentId === appointment.id);
+      if (!payment || !payment.amount || payment.amount < 0.5) {
+        alert("Aucun paiement valide trouvé pour ce rendez-vous (ou montant < 0,50 €)");
+        return;
+      }
+      const url = await this.stripeService.purchaseService(
+        appointment.userId,
+        appointment.expertId,
+        payment.amount,
+        'eur'
+      ).toPromise();
+      console.log('URL Stripe Checkout reçue:', url);
+      if (!url) throw new Error('Impossible de créer la session Stripe Checkout');
+      window.location.href = url;
+    } catch (error) {
+      console.error('Erreur payerCheckout:', error);
+      alert(error instanceof Error ? error.message : 'Erreur lors du paiement Checkout');
     }
   }
 
-  formatDate(dateString: string): string {
-    const date = new Date(dateString);
-    return date.toLocaleDateString('fr-FR', {
-      weekday: 'long',
-      year: 'numeric',
-      month: 'long',
-      day: 'numeric'
+  async payerDirect(appointment: Appointment) {
+    try {
+      // 1. Récupérer le service price de l'expert
+      const expert = await this.expertService.getExpertById(appointment.expertId).toPromise();
+      if (!expert) {
+        alert("Impossible de récupérer l'expert pour ce rendez-vous.");
+        return;
+      }
+      const amount = expert.getServicePrice();
+      if (!amount || amount < 50) {
+        alert("Montant du service invalide (< 0,50 €)");
+        return;
+      }
+      // 2. Appeler la méthode gRPC CreatePaymentIntent
+      const clientSecret = await this.stripeService.createPaymentIntent(
+        appointment.userId,
+        appointment.expertId,
+        amount,
+        'eur'
+      ).toPromise();
+      if (!clientSecret) throw new Error('Impossible de créer le paiement Stripe');
+      // 3. Lancer le paiement Stripe côté front (Stripe.js)
+      const stripe = (window as any).Stripe && (window as any).Stripe('pk_test_xxx'); // Remplace par ta clé publique Stripe
+      if (!stripe) throw new Error('Stripe non initialisé');
+      const { error, paymentIntent } = await stripe.confirmCardPayment(clientSecret, {
+        payment_method: {
+          // Ici tu peux ajouter billing_details, etc. si tu veux
+        }
+      });
+      if (error) throw new Error(error.message);
+      if (paymentIntent && paymentIntent.status === 'succeeded') {
+        alert('Paiement réussi !');
+        // Rediriger ou afficher un message de succès
+      }
+    } catch (error) {
+      console.error('Erreur payerDirect:', error);
+      alert(error instanceof Error ? error.message : 'Erreur lors du paiement direct');
+    }
+  }
+
+  getVehicleInfo(vehicleId: string): string {
+    if (this.vehicleCache.has(vehicleId)) {
+      const v = this.vehicleCache.get(vehicleId)!;
+      return `${v.getBrand()} ${v.getModel()} (${v.getYear()})`;
+    }
+    this.vehicleService.getVehicleById(vehicleId).subscribe({
+      next: (vehicle: VehicleReply) => {
+        this.vehicleCache.set(vehicleId, vehicle);
+      },
+      error: () => {}
     });
+    return 'Chargement...';
   }
 
-  formatTime(dateString: string): string {
-    const date = new Date(dateString);
-    return date.toLocaleTimeString('fr-FR', {
-      hour: '2-digit',
-      minute: '2-digit'
+  getPriceAnnounced(expertId: string): string {
+    if (this.expertCache.has(expertId)) {
+      const expert = this.expertCache.get(expertId)!;
+      const price = expert.getServicePrice();
+      return price ? (price).toFixed(2) + ' €' : 'Non renseigné';
+    }
+    this.expertService.getExpertById(expertId).subscribe({
+      next: (expert: ExpertReply) => {
+        this.expertCache.set(expertId, expert);
+      },
+      error: () => {}
     });
-  }
-
-  createAppointment(): void {
-    this.router.navigate(['/appointments/create']);
-  }
-
-  viewDetails(appointmentId: string): void {
-    this.router.navigate(['/appointments', appointmentId]);
+    return 'Chargement...';
   }
 } 

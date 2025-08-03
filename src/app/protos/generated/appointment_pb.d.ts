@@ -2,6 +2,46 @@ import * as jspb from 'google-protobuf'
 
 
 
+export class UpdateAppointmentStatusRequest extends jspb.Message {
+  getAppointmentId(): string;
+  setAppointmentId(value: string): UpdateAppointmentStatusRequest;
+
+  getNewStatus(): string;
+  setNewStatus(value: string): UpdateAppointmentStatusRequest;
+
+  serializeBinary(): Uint8Array;
+  toObject(includeInstance?: boolean): UpdateAppointmentStatusRequest.AsObject;
+  static toObject(includeInstance: boolean, msg: UpdateAppointmentStatusRequest): UpdateAppointmentStatusRequest.AsObject;
+  static serializeBinaryToWriter(message: UpdateAppointmentStatusRequest, writer: jspb.BinaryWriter): void;
+  static deserializeBinary(bytes: Uint8Array): UpdateAppointmentStatusRequest;
+  static deserializeBinaryFromReader(message: UpdateAppointmentStatusRequest, reader: jspb.BinaryReader): UpdateAppointmentStatusRequest;
+}
+
+export namespace UpdateAppointmentStatusRequest {
+  export type AsObject = {
+    appointmentId: string,
+    newStatus: string,
+  }
+}
+
+export class UpdateAppointmentStatusReply extends jspb.Message {
+  getMessage(): string;
+  setMessage(value: string): UpdateAppointmentStatusReply;
+
+  serializeBinary(): Uint8Array;
+  toObject(includeInstance?: boolean): UpdateAppointmentStatusReply.AsObject;
+  static toObject(includeInstance: boolean, msg: UpdateAppointmentStatusReply): UpdateAppointmentStatusReply.AsObject;
+  static serializeBinaryToWriter(message: UpdateAppointmentStatusReply, writer: jspb.BinaryWriter): void;
+  static deserializeBinary(bytes: Uint8Array): UpdateAppointmentStatusReply;
+  static deserializeBinaryFromReader(message: UpdateAppointmentStatusReply, reader: jspb.BinaryReader): UpdateAppointmentStatusReply;
+}
+
+export namespace UpdateAppointmentStatusReply {
+  export type AsObject = {
+    message: string,
+  }
+}
+
 export class Empty extends jspb.Message {
   serializeBinary(): Uint8Array;
   toObject(includeInstance?: boolean): Empty.AsObject;
@@ -155,6 +195,9 @@ export class AppointmentReply extends jspb.Message {
   getNotes(): string;
   setNotes(value: string): AppointmentReply;
 
+  getPaymentId(): string;
+  setPaymentId(value: string): AppointmentReply;
+
   serializeBinary(): Uint8Array;
   toObject(includeInstance?: boolean): AppointmentReply.AsObject;
   static toObject(includeInstance: boolean, msg: AppointmentReply): AppointmentReply.AsObject;
@@ -173,6 +216,7 @@ export namespace AppointmentReply {
     status: string,
     address: string,
     notes: string,
+    paymentId: string,
   }
 }
 

@@ -1,11 +1,13 @@
 import { Component, OnInit } from '@angular/core';
 import { FormBuilder, FormGroup, Validators } from '@angular/forms';
-import { Router } from '@angular/router';
+import { Router, ActivatedRoute } from '@angular/router';
 import { AppointmentService, CreateAppointmentData, AppointmentStatus } from '../../../../core/services/appointment.service';
 import { ExpertService } from '../../../../core/services/expert.service';
 import { VehicleService } from '../../../../core/services/vehicle.service';
 import { ExpertReply, ExpertsReply } from '../../../../protos/generated/expert_pb';
 import { VehicleReply, VehiclesReply } from '../../../../protos/generated/vehicle_pb';
+import { AuthService } from '../../../../core/services/auth.service';
+import { StripeService } from '../../../../core/services/stripe.service';
 
 @Component({
   selector: 'app-create-appointment-page',
@@ -114,13 +116,17 @@ export class CreateAppointmentPageComponent implements OnInit {
   vehicles: VehicleReply[] = [];
   loading = false;
   errorMessage = '';
+  selectedExpertPrice: number | null = null;
 
   constructor(
     private fb: FormBuilder,
     private appointmentService: AppointmentService,
     private expertService: ExpertService,
     private vehicleService: VehicleService,
-    public router: Router
+    public router: Router,
+    private authService: AuthService,
+    private route: ActivatedRoute,
+    private stripeService: StripeService
   ) {
     this.appointmentForm = this.fb.group({
       expertId: ['', Validators.required],
@@ -134,6 +140,12 @@ export class CreateAppointmentPageComponent implements OnInit {
   ngOnInit(): void {
     this.loadExperts();
     this.loadVehicles();
+    // Préremplir l'expert si queryParam présent
+    const expertId = this.route.snapshot.queryParamMap.get('expertId');
+    if (expertId) {
+      this.appointmentForm.patchValue({ expertId });
+    }
+    this.appointmentForm.get('expertId')?.valueChanges.subscribe(() => this.onExpertChange());
   }
 
   private loadExperts(): void {
@@ -168,7 +180,12 @@ export class CreateAppointmentPageComponent implements OnInit {
   }
 
   onSubmit(): void {
-    if (this.appointmentForm.valid) {
+    if (this.appointmentForm.valid && this.selectedExpertPrice !== null) {
+      if (!this.selectedExpertPrice || this.selectedExpertPrice < 50) {
+        this.errorMessage = "Le montant du service doit être d'au moins 0,50 €.";
+        this.loading = false;
+        return;
+      }
       this.loading = true;
       const userId = localStorage.getItem('auth_token');
       if (!userId) {
@@ -178,20 +195,32 @@ export class CreateAppointmentPageComponent implements OnInit {
       }
 
       const formValue = this.appointmentForm.value;
-      const formData: CreateAppointmentData = {
-        userId,
+      const appointmentData: CreateAppointmentData = {
+        date: new Date(formValue.date),
+        address: formValue.address,
+        notes: formValue.notes,
+        status: AppointmentStatus.EN_ATTENTE,
         expertId: formValue.expertId,
         vehicleId: formValue.vehicleId,
-        date: formValue.date,
-        address: formValue.address,
-        status: AppointmentStatus.EN_ATTENTE,
-        notes: formValue.notes
+        durationMinutes: this.appointmentForm.value.durationMinutes,
+        userId: this.authService.getCurrentUser()?.id || ''
       };
 
-      this.appointmentService.createAppointment(formData).subscribe(
-        () => {
-          this.loading = false;
-          this.router.navigate(['/appointments']);
+      this.appointmentService.createAppointment(appointmentData).subscribe(
+        (appointment) => {
+          // Création du paiement avec le montant du service expert
+          this.stripeService.createPayment(appointment.id, this.selectedExpertPrice!, appointment.expertId).subscribe(
+            (payment) => {
+              this.loading = false;
+              // Rediriger vers la page de paiement avec l'appointmentId
+              this.router.navigate(['/payments/form'], { queryParams: { appointmentId: appointment.id } });
+            },
+            (error: Error) => {
+              this.loading = false;
+              this.errorMessage = 'Erreur lors de la création du paiement';
+              console.error('Erreur paiement:', error);
+            }
+          );
         },
         (error: Error) => {
           this.loading = false;
@@ -199,6 +228,22 @@ export class CreateAppointmentPageComponent implements OnInit {
           console.error('Erreur:', error);
         }
       );
+    }
+  }
+
+  onExpertChange() {
+    const expertId = this.appointmentForm.get('expertId')?.value;
+    if (expertId) {
+      this.expertService.getExpertServicePrice(expertId).subscribe({
+        next: (reply) => {
+          this.selectedExpertPrice = reply.getServicePrice();
+        },
+        error: () => {
+          this.selectedExpertPrice = null;
+        }
+      });
+    } else {
+      this.selectedExpertPrice = null;
     }
   }
 } 

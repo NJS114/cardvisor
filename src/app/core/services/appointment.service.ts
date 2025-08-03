@@ -1,171 +1,207 @@
 import { Injectable } from '@angular/core';
-import { Observable } from 'rxjs';
-import { 
-  AppointmentReply, 
-  AppointmentsReply, 
-  CreateAppointmentRequest,
-  DeleteAppointmentRequest,
-  DeleteReply,
-  GetAppointmentByIdRequest,
-  GetAppointmentsByUserIdRequest,
-  GetAppointmentsByExpertIdRequest,
-  Empty
-} from '../../protos/generated/appointment_pb';
+import { Observable, from, map } from 'rxjs';
+import { environment } from '../../../environments/environment';
 import { AppointmentServiceClient } from '../../protos/generated/AppointmentServiceClientPb';
-import { createGrpcClient } from '../../protos/proto.config';
+import * as appointment_pb from '../../protos/generated/appointment_pb';
 
 export enum AppointmentStatus {
   EN_ATTENTE = 'EN_ATTENTE',
-  CONFIRME = 'CONFIRMÉ',
-  ANNULE = 'ANNULÉ',
-  REALISE = 'RÉALISÉ'
+  CONFIRMÉ = 'CONFIRMÉ',
+  RÉALISÉ = 'RÉALISÉ',
+  ANNULÉ = 'ANNULÉ'
 }
 
 export interface Appointment {
   id: string;
-  date: Date;
-  status: 'REALISE' | 'EN_ATTENTE' | 'ANNULE' | 'CONFIRME';
-  expertId?: string;
   userId: string;
+  expertId: string;
+  vehicleId: string;
+  date: Date;
+  status: AppointmentStatus;
   address: string;
-  distance?: number;
-  expertName?: string;
-  userName?: string;
   notes?: string;
-  vehicleId?: string;
+  durationMinutes?: number;
+  createdAt: Date;
+  payment?: Payment;
+}
+
+export interface Payment {
+  id: string;
+  appointmentId: string;
+  userId: string;
+  expertId: string;
+  paymentIntentId: string;
+  amount: number;
+  expertRevenue: number;
+  platformFee: number;
+  dividendAmount?: number;
+  status: 'succeeded' | 'pending' | 'failed';
+  paymentDate: Date;
 }
 
 export interface CreateAppointmentData {
-  date: string;
+  date: Date;
   address: string;
   notes?: string;
   status: AppointmentStatus;
-  userId?: string;
-  expertId?: string;
-  vehicleId?: string;
+  userId: string;
+  expertId: string;
+  vehicleId: string;
+  durationMinutes?: number;
 }
 
 @Injectable({
   providedIn: 'root'
 })
 export class AppointmentService {
-  private client: AppointmentServiceClient;
+  private grpcClient: AppointmentServiceClient;
 
   constructor() {
-    const host = 'http://localhost:5257';
-    this.client = createGrpcClient(AppointmentServiceClient, host);
+    // Remplace l'URL par celle de ton serveur gRPC (ex: http://localhost:5257)
+    this.grpcClient = new AppointmentServiceClient('http://localhost:5257');
   }
 
-  private convertToCreateRequest(data: CreateAppointmentData): CreateAppointmentRequest {
-    const request = new CreateAppointmentRequest();
-    request.setDate(data.date);
-    request.setAddress(data.address);
-    if (data.notes) request.setNotes(data.notes);
+  // Créer un rendez-vous via gRPC
+  createAppointment(data: CreateAppointmentData): Observable<Appointment> {
+    const request = new appointment_pb.CreateAppointmentRequest();
+    request.setUserId(data.userId);
+    request.setExpertId(data.expertId);
+    request.setVehicleId(data.vehicleId);
+    request.setDate(data.date instanceof Date ? data.date.toISOString() : data.date);
     request.setStatus(data.status);
-    if (data.userId) request.setUserId(data.userId);
-    if (data.expertId) request.setExpertId(data.expertId);
-    if (data.vehicleId) request.setVehicleId(data.vehicleId);
-    return request;
+    request.setAddress(data.address);
+    request.setNotes(data.notes || '');
+    // durationMinutes n'est pas dans le proto, donc ignoré
+
+    return from(
+      this.grpcClient.createAppointment(request).then((a: appointment_pb.AppointmentReply) => ({
+        id: a.getId(),
+        userId: a.getUserId(),
+        expertId: a.getExpertId(),
+        vehicleId: a.getVehicleId(),
+        date: new Date(a.getDate()),
+        status: a.getStatus() as AppointmentStatus,
+        address: a.getAddress(),
+        notes: a.getNotes(),
+        payment: undefined, // Le proto ne fournit pas l'objet complet Payment
+        createdAt: new Date(), // Valeur par défaut, car non présente dans le proto
+      }))
+    );
   }
 
-  private convertToAppointment(reply: AppointmentReply): Appointment {
-    return {
-      id: reply.getId(),
-      date: new Date(reply.getDate()),
-      status: reply.getStatus() as Appointment['status'],
-      expertId: reply.getExpertId(),
-      userId: reply.getUserId(),
-      address: reply.getAddress(),
-      notes: reply.getNotes(),
-      vehicleId: reply.getVehicleId()
-    };
+  // Obtenir un rendez-vous par ID via gRPC
+  getAppointmentById(id: string): Observable<Appointment> {
+    const request = new appointment_pb.GetAppointmentByIdRequest();
+    request.setAppointmentId(id);
+    return from(
+      this.grpcClient.getAppointmentById(request).then((a: appointment_pb.AppointmentReply) => ({
+        id: a.getId(),
+        userId: a.getUserId(),
+        expertId: a.getExpertId(),
+        vehicleId: a.getVehicleId(),
+        date: new Date(a.getDate()),
+        status: a.getStatus() as AppointmentStatus,
+        address: a.getAddress(),
+        notes: a.getNotes(),
+        payment: undefined, // Le proto ne fournit pas l'objet complet Payment
+        createdAt: new Date(), // Valeur par défaut, car non présente dans le proto
+      }))
+    );
   }
 
-  createAppointment(data: CreateAppointmentData): Observable<AppointmentReply> {
-    return new Observable(observer => {
-      const request = this.convertToCreateRequest(data);
-      this.client.createAppointment(request, null, (err: Error, response: AppointmentReply) => {
-        if (err) {
-          observer.error(err);
-        } else {
-          observer.next(response);
-          observer.complete();
-        }
-      });
-    });
+  // Obtenir les rendez-vous d'un expert via gRPC
+  getAppointmentsByExpertId(expertId: string): Observable<Appointment[]> {
+    const request = new appointment_pb.GetAppointmentsByExpertIdRequest();
+    request.setExpertId(expertId);
+    return from(
+      this.grpcClient.getAppointmentsByExpertId(request).then((reply: appointment_pb.AppointmentsReply) => {
+        return reply.getAppointmentsList().map((a) => ({
+          id: a.getId(),
+          userId: a.getUserId(),
+          expertId: a.getExpertId(),
+          vehicleId: a.getVehicleId(),
+          date: new Date(a.getDate()),
+          status: a.getStatus() as AppointmentStatus,
+          address: a.getAddress(),
+          notes: a.getNotes(),
+          payment: undefined,
+          createdAt: new Date(),
+        }));
+      })
+    );
   }
 
-  getAppointmentById(id: string): Observable<AppointmentReply> {
-    return new Observable(observer => {
-      const request = new GetAppointmentByIdRequest();
-      request.setAppointmentId(id);
-      this.client.getAppointmentById(request, null, (err: Error, response: AppointmentReply) => {
-        if (err) {
-          observer.error(err);
-        } else {
-          observer.next(response);
-          observer.complete();
-        }
-      });
-    });
+  // Obtenir les rendez-vous d'un utilisateur via gRPC
+  getAppointmentsByUserId(userId: string): Observable<Appointment[]> {
+    const request = new appointment_pb.GetAppointmentsByUserIdRequest();
+    request.setUserId(userId);
+    return from(
+      this.grpcClient.getAppointmentsByUserId(request).then((reply: appointment_pb.AppointmentsReply) => {
+        return reply.getAppointmentsList().map((a) => ({
+          id: a.getId(),
+          userId: a.getUserId(),
+          expertId: a.getExpertId(),
+          vehicleId: a.getVehicleId(),
+          date: new Date(a.getDate()),
+          status: a.getStatus() as AppointmentStatus,
+          address: a.getAddress(),
+          notes: a.getNotes(),
+          payment: undefined,
+          createdAt: new Date(),
+        }));
+      })
+    );
   }
 
-  getAppointmentsByUserId(userId: string): Observable<AppointmentsReply> {
-    return new Observable(observer => {
-      const request = new GetAppointmentsByUserIdRequest();
-      request.setUserId(userId);
-      this.client.getAppointmentsByUserId(request, null, (err: Error, response: AppointmentsReply) => {
-        if (err) {
-          observer.error(err);
-        } else {
-          observer.next(response);
-          observer.complete();
-        }
-      });
-    });
+  // Obtenir tous les rendez-vous via gRPC
+  getAllAppointments(): Observable<Appointment[]> {
+    const request = new appointment_pb.Empty();
+    return from(
+      this.grpcClient.getAllAppointments(request).then((reply: appointment_pb.AppointmentsReply) => {
+        // Mapping des objets gRPC vers le modèle Angular
+        return reply.getAppointmentsList().map((a) => ({
+          id: a.getId(),
+          userId: a.getUserId(),
+          expertId: a.getExpertId(),
+          vehicleId: a.getVehicleId(),
+          date: new Date(a.getDate()),
+          status: a.getStatus() as AppointmentStatus,
+          address: a.getAddress(),
+          notes: a.getNotes(),
+          payment: undefined, // Le proto ne fournit pas l'objet complet Payment
+          createdAt: new Date(), // Valeur par défaut, car non présente dans le proto
+          // Ajoute d'autres champs si besoin
+        }));
+      })
+    );
   }
 
-  getAppointmentsByExpertId(expertId: string): Observable<AppointmentsReply> {
-    return new Observable(observer => {
-      const request = new GetAppointmentsByExpertIdRequest();
-      request.setExpertId(expertId);
-      this.client.getAppointmentsByExpertId(request, null, (err: Error, response: AppointmentsReply) => {
-        if (err) {
-          observer.error(err);
-        } else {
-          observer.next(response);
-          observer.complete();
-        }
-      });
-    });
+  // Mettre à jour le statut d'un rendez-vous via gRPC
+  updateAppointmentStatus(id: string, status: AppointmentStatus): Observable<string> {
+    const request = new appointment_pb.UpdateAppointmentStatusRequest();
+    request.setAppointmentId(id);
+    request.setNewStatus(status);
+    return from(
+      this.grpcClient.updateAppointmentStatus(request).then((reply: appointment_pb.UpdateAppointmentStatusReply) => reply.getMessage())
+    );
   }
 
-  deleteAppointment(id: string): Observable<DeleteReply> {
-    return new Observable(observer => {
-      const request = new DeleteAppointmentRequest();
-      request.setAppointmentId(id);
-      this.client.deleteAppointment(request, null, (err: Error, response: DeleteReply) => {
-        if (err) {
-          observer.error(err);
-        } else {
-          observer.next(response);
-          observer.complete();
-        }
-      });
-    });
+  // Annuler un rendez-vous via gRPC
+  cancelAppointment(id: string): Observable<string> {
+    return this.updateAppointmentStatus(id, AppointmentStatus.ANNULÉ);
   }
 
-  getAllAppointments(): Observable<AppointmentsReply> {
-    return new Observable(observer => {
-      const request = new Empty();
-      this.client.getAllAppointments(request, null, (err: Error, response: AppointmentsReply) => {
-        if (err) {
-          observer.error(err);
-        } else {
-          observer.next(response);
-          observer.complete();
-        }
-      });
-    });
+  // Supprimer un rendez-vous
+  deleteAppointment(id: string): Observable<void> {
+    return from(fetch(`${environment.apiUrl}/appointments/${id}`, {
+      method: 'DELETE',
+      headers: {
+        'Content-Type': 'application/json'
+      }
+    }).then(response => {
+      if (!response.ok) {
+        throw new Error('Erreur lors de la suppression du rendez-vous');
+      }
+    }));
   }
 } 

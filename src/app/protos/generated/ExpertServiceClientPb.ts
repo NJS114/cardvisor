@@ -254,6 +254,49 @@ export class ExpertServiceClient {
     this.methodDescriptorGetExpertsBySpeciality);
   }
 
+  methodDescriptorGetExpertServicePrice = new grpcWeb.MethodDescriptor(
+    '/expert.ExpertService/GetExpertServicePrice',
+    grpcWeb.MethodType.UNARY,
+    expert_pb.GetExpertByIdRequest,
+    expert_pb.ServicePriceReply,
+    (request: expert_pb.GetExpertByIdRequest) => {
+      return request.serializeBinary();
+    },
+    expert_pb.ServicePriceReply.deserializeBinary
+  );
+
+  getExpertServicePrice(
+    request: expert_pb.GetExpertByIdRequest,
+    metadata?: grpcWeb.Metadata | null): Promise<expert_pb.ServicePriceReply>;
+
+  getExpertServicePrice(
+    request: expert_pb.GetExpertByIdRequest,
+    metadata: grpcWeb.Metadata | null,
+    callback: (err: grpcWeb.RpcError,
+               response: expert_pb.ServicePriceReply) => void): grpcWeb.ClientReadableStream<expert_pb.ServicePriceReply>;
+
+  getExpertServicePrice(
+    request: expert_pb.GetExpertByIdRequest,
+    metadata?: grpcWeb.Metadata | null,
+    callback?: (err: grpcWeb.RpcError,
+               response: expert_pb.ServicePriceReply) => void) {
+    if (callback !== undefined) {
+      return this.client_.rpcCall(
+        this.hostname_ +
+          '/expert.ExpertService/GetExpertServicePrice',
+        request,
+        metadata || {},
+        this.methodDescriptorGetExpertServicePrice,
+        callback);
+    }
+    return this.client_.unaryCall(
+    this.hostname_ +
+      '/expert.ExpertService/GetExpertServicePrice',
+    request,
+    metadata || {},
+    this.methodDescriptorGetExpertServicePrice);
+  }
+
   methodDescriptorDeleteExpert = new grpcWeb.MethodDescriptor(
     '/expert.ExpertService/DeleteExpert',
     grpcWeb.MethodType.UNARY,
@@ -381,6 +424,92 @@ export class ExpertServiceClient {
     request,
     metadata || {},
     this.methodDescriptorGetExpertsByRating);
+  }
+
+  methodDescriptorGetExpertByUserId = new grpcWeb.MethodDescriptor(
+    '/expert.ExpertService/GetExpertByUserId',
+    grpcWeb.MethodType.UNARY,
+    expert_pb.GetExpertByIdRequest,
+    expert_pb.ExpertReply,
+    (request: expert_pb.GetExpertByIdRequest) => {
+      return request.serializeBinary();
+    },
+    expert_pb.ExpertReply.deserializeBinary
+  );
+
+  getExpertByUserId(
+    request: expert_pb.GetExpertByIdRequest,
+    metadata?: grpcWeb.Metadata | null): Promise<expert_pb.ExpertReply>;
+
+  getExpertByUserId(
+    request: expert_pb.GetExpertByIdRequest,
+    metadata: grpcWeb.Metadata | null,
+    callback: (err: grpcWeb.RpcError,
+               response: expert_pb.ExpertReply) => void): grpcWeb.ClientReadableStream<expert_pb.ExpertReply>;
+
+  getExpertByUserId(
+    request: expert_pb.GetExpertByIdRequest,
+    metadata?: grpcWeb.Metadata | null,
+    callback?: (err: grpcWeb.RpcError,
+               response: expert_pb.ExpertReply) => void) {
+    if (callback !== undefined) {
+      return this.client_.rpcCall(
+        this.hostname_ +
+          '/expert.ExpertService/GetExpertByUserId',
+        request,
+        metadata || {},
+        this.methodDescriptorGetExpertByUserId,
+        callback);
+    }
+    return this.client_.unaryCall(
+    this.hostname_ +
+      '/expert.ExpertService/GetExpertByUserId',
+    request,
+    metadata || {},
+    this.methodDescriptorGetExpertByUserId);
+  }
+
+  methodDescriptorUpdateExpertPrice = new grpcWeb.MethodDescriptor(
+    '/expert.ExpertService/UpdateExpertPrice',
+    grpcWeb.MethodType.UNARY,
+    expert_pb.UpdateExpertPriceRequest,
+    expert_pb.ExpertReply,
+    (request: expert_pb.UpdateExpertPriceRequest) => {
+      return request.serializeBinary();
+    },
+    expert_pb.ExpertReply.deserializeBinary
+  );
+
+  updateExpertPrice(
+    request: expert_pb.UpdateExpertPriceRequest,
+    metadata?: grpcWeb.Metadata | null): Promise<expert_pb.ExpertReply>;
+
+  updateExpertPrice(
+    request: expert_pb.UpdateExpertPriceRequest,
+    metadata: grpcWeb.Metadata | null,
+    callback: (err: grpcWeb.RpcError,
+               response: expert_pb.ExpertReply) => void): grpcWeb.ClientReadableStream<expert_pb.ExpertReply>;
+
+  updateExpertPrice(
+    request: expert_pb.UpdateExpertPriceRequest,
+    metadata?: grpcWeb.Metadata | null,
+    callback?: (err: grpcWeb.RpcError,
+               response: expert_pb.ExpertReply) => void) {
+    if (callback !== undefined) {
+      return this.client_.rpcCall(
+        this.hostname_ +
+          '/expert.ExpertService/UpdateExpertPrice',
+        request,
+        metadata || {},
+        this.methodDescriptorUpdateExpertPrice,
+        callback);
+    }
+    return this.client_.unaryCall(
+    this.hostname_ +
+      '/expert.ExpertService/UpdateExpertPrice',
+    request,
+    metadata || {},
+    this.methodDescriptorUpdateExpertPrice);
   }
 
 }

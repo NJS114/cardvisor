@@ -1,0 +1,4 @@
+                <p class="font-medium">{{ appointment.date | date:'long' }}</p>
+                <p class="text-gray-600">{{ appointment.address }}</p>
+                <p class="text-gray-600">Véhicule : {{ getVehicleInfo(appointment.vehicleId) }}</p>
+                <p class="text-gray-600">Prix annoncé : {{ getPriceAnnounced(appointment.expertId) }}</p> 

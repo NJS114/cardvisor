@@ -86,23 +86,28 @@ export class AuthService {
             } else {
               observer.error(new Error(`Erreur de connexion: ${err.message}`));
             }
-          } else {
-            console.log('Connexion réussie:', response.toObject());
-            const userId = response.getId();
-            const user: User = {
-              id: userId,
-              email: response.getEmail(),
-              firstName: response.getFirstName(),
-              lastName: response.getLastName(),
-              role: response.getRole() as 'USER' | 'EXPERT'
-            };
-            localStorage.setItem('auth_token', userId);
-            localStorage.setItem('currentUser', JSON.stringify(user));
-            this.currentUserSubject.next(user);
-            this.isAuthenticatedSubject.next(true);
-            observer.next(response);
-            observer.complete();
           }
+          // Vérification du rôle pour la connexion expert
+          const userRole = response.getRole();
+          if (userRole !== 'EXPERT' && email.endsWith('@expert.com')) { // exemple de logique
+            observer.error(new Error('Seuls les comptes experts peuvent se connecter ici.'));
+            return;
+          }
+          console.log('Connexion réussie:', response.toObject());
+          const userId = response.getId();
+          const user: User = {
+            id: userId,
+            email: response.getEmail(),
+            firstName: response.getFirstName(),
+            lastName: response.getLastName(),
+            role: response.getRole() as 'USER' | 'EXPERT'
+          };
+          localStorage.setItem('auth_token', userId);
+          localStorage.setItem('currentUser', JSON.stringify(user));
+          this.currentUserSubject.next(user);
+          this.isAuthenticatedSubject.next(true);
+          observer.next(response);
+          observer.complete();
         });
       } catch (error) {
         console.error('Erreur lors de l\'appel à login:', error);
